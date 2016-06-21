@@ -64,13 +64,35 @@ public enum Codon {
     GTG("GTG", AminoAcid.VAL),
     TAA("TAA", AminoAcid.STOP),
     TGA("TGA", AminoAcid.STOP),
-    TAG("TAG", AminoAcid.STOP);
+    TAG("TAG", AminoAcid.STOP),
+
+    ALA("???", AminoAcid.ALA),
+    ARG("???", AminoAcid.ARG),
+    ASN("???", AminoAcid.ASN),
+    ASP("???", AminoAcid.ASP),
+    CYS("???", AminoAcid.CYS),
+    GLN("???", AminoAcid.GLN),
+    GLU("???", AminoAcid.GLU),
+    GLY("???", AminoAcid.GLY),
+    HIS("???", AminoAcid.HIS),
+    LEU("???", AminoAcid.LEU),
+    LYS("???", AminoAcid.LYS),
+    ILE("???", AminoAcid.ILE),
+    MET("???", AminoAcid.MET),
+    PHE("???", AminoAcid.PHE),
+    PRO("???", AminoAcid.PRO),
+    SER("???", AminoAcid.SER),
+    THR("???", AminoAcid.THR),
+    TRP("???", AminoAcid.TRP),
+    TYR("???", AminoAcid.TYR),
+    VAL("???", AminoAcid.VAL),
+    STOP("???", AminoAcid.STOP);
 
     private String name;
     private AminoAcid aa;
 
-    Codon(String name, AminoAcid aa) {
-        this.name = name;
+    Codon(String bases, AminoAcid aa) {
+        this.name = bases;
         this.aa = aa;
     }
 
