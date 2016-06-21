@@ -1,27 +1,37 @@
 package edu.tcnj.oligos.data;
 
 public enum AminoAcid {
-    ALA("A", "Alanine"),
-    ARG("R", "Arginine"),
-    ASN("N", "Asparagine"),
-    ASP("D", "Aspartic acid"),
-    CYS("C", "Cysteine"),
-    GLN("Q", "Glutamine"),
-    GLU("E", "Glutamic acid"),
-    GLY("G", "Glycine"),
-    HIS("H", "Histidine"),
-    LEU("L", "Leucine"),
-    LYS("K", "Lysine"),
-    ILE("I", "Isoleucine"),
-    MET("M", "Methionine"),
-    PHE("F", "Phenylalanine"),
-    PRO("P", "Proline"),
-    SER("S", "Serine"),
-    THR("T", "Threonine"),
-    TRP("W", "Tryptophan"),
-    TYR("Y", "Tyrosine"),
-    VAL("V", "Valine"),
-    STOP(".", "Stop");
+    ALA("A", "Alanine", Codon.ALA),
+    ARG("R", "Arginine", Codon.ARG),
+    ASN("N", "Asparagine", Codon.ASN),
+    ASP("D", "Aspartic acid", Codon.ASP),
+    CYS("C", "Cysteine", Codon.CYS),
+    GLN("Q", "Glutamine", Codon.GLN),
+    GLU("E", "Glutamic acid", Codon.GLU),
+    GLY("G", "Glycine", Codon.GLY),
+    HIS("H", "Histidine", Codon.HIS),
+    LEU("L", "Leucine", Codon.LEU),
+    LYS("K", "Lysine", Codon.LYS),
+    ILE("I", "Isoleucine", Codon.ILE),
+    MET("M", "Methionine", Codon.MET),
+    PHE("F", "Phenylalanine", Codon.PHE),
+    PRO("P", "Proline", Codon.PRO),
+    SER("S", "Serine", Codon.SER),
+    THR("T", "Threonine", Codon.THR),
+    TRP("W", "Tryptophan", Codon.TRP),
+    TYR("Y", "Tyrosine", Codon.TYR),
+    VAL("V", "Valine", Codon.VAL),
+    STOP(".", "Stop", Codon.STOP);
+
+    AminoAcid(String ch, String name, Codon wildcard) {
+        this.ch = ch;
+        this.name = name;
+        this.wildcard = wildcard;
+    }
+
+    private String ch;
+    private String name;
+    private Codon wildcard;
 
     public String getCh() {
         return ch;
@@ -31,11 +41,7 @@ public enum AminoAcid {
         return name;
     }
 
-    private String ch;
-    private String name;
-
-    AminoAcid(String ch, String name) {
-        this.ch = ch;
-        this.name = name;
+    public Codon getWildcard() {
+        return wildcard;
     }
 }
