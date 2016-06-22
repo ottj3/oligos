@@ -5,13 +5,13 @@ import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.data.RNASequence;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class oligos {
     private static List<List<RNASequence>> sequence = new ArrayList<>();
     private static List<List<RNASequence>> overlaps = new ArrayList<>();
+
     //{0:{oligoA, oligoB},1:{oligoC, oligoD}}
     public static void main(String[] args) {
         //do stuff, put base sequence into sequence[0..n][0]
@@ -21,14 +21,22 @@ public class oligos {
         for (int i = 0; i < numRegions; i++) {
             ArrayList<RNASequence> list = new ArrayList<>();
             RNASequence oli1 = new RNASequence(Integer.toString(i));
+//            oli1.data.add(Codon.CTC);
+//            oli1.data.add(Codon.CTT);
+//            oli1.data.add(Codon.TTA);
+//            oli1.data.add(Codon.CTG);
+//            oli1.data.add(Codon.TTG);
             oli1.data.add(Codon.ACC);
             oli1.data.add(Codon.GTC);
             oli1.data.add(Codon.GAA);
             list.add(oli1);
             sequence.add(list);
         }
-        Codon[] codons = {Codon.ACT, Codon.GTG, Codon.GAG};
+//        Codon[] codons = {Codon.CTA};
+//        Integer[][][] fragments = {{{0, 1}, {2, 3}}};
+//        Integer[][][] designs = {{{0, 1}, {0, 2}}};
         String[] names = new String[numDesigns];
+        Codon[] codons = {Codon.ACT, Codon.GTG, Codon.GAG};
         Integer[][][] fragments = {{{1, 2}, {7, 9}}, {{0, 0}, {2, 7}}, {{0, 1}, {3, 5}}};//new Integer[numDesigns][2][];
         Integer[][][] designs = {{{0, 2}, {0, 1}}, {{0, 1}, {0, 2}}, {{0, 1, 2}, {0, 3}}};//new Integer[numDesigns][][];
         Integer[][][] designCopy = new Integer[numDesigns][][];
@@ -107,7 +115,7 @@ public class oligos {
             }
         }
 
-        for (int overlapI = 0; overlapI < numRegions-1; overlapI++) {
+        for (int overlapI = 0; overlapI < numRegions - 1; overlapI++) {
             for (RNASequence overlap : overlaps.get(overlapI)) {
                 for (RNASequence oligo : sequence.get(overlapI)) {
                     boolean edgeExists = true;
@@ -122,7 +130,7 @@ public class oligos {
                         oligo.forwardEdges.add(overlap);
                     }
                 }
-                for (RNASequence oligo : sequence.get(overlapI+1)) {
+                for (RNASequence oligo : sequence.get(overlapI + 1)) {
                     boolean edgeExists = true;
                     for (Map.Entry<AminoAcid, Integer> entry : overlap.deltas.entrySet()) {
                         if (oligo.deltas.get(entry.getKey()).compareTo(entry.getValue()) != 0) {
@@ -137,6 +145,74 @@ public class oligos {
                 }
             }
         }
+
+        //For every region of overlaps, make sure that every overlap is unique
+        for (List<RNASequence> overlapRegion : overlaps) {
+            //For every overlap except the first (first will stay unchanged)
+            for (int overlapI = 1; overlapI < overlapRegion.size(); overlapI++) {
+                RNASequence thisOverlap = overlapRegion.get(overlapI);
+                //For every codon in this overlap, try to change it to make this overlap unique
+                for (int codonI = 0; codonI < thisOverlap.data.size(); codonI++) {
+                    //If it's already unique, good job. done.
+                    if (!matchesAnyPrevious(overlapRegion, overlapI)) break;
+
+                    //Find a codon in thisOverlap.backEdges that can swap with the current codon
+                    //TODO: If the backEdge changes don't work, try forwardEdges
+                    RNASequence preOligo = thisOverlap.backEdges.get(0);
+                    for (int preI = 0; preI < preOligo.data.size() - thisOverlap.data.size(); preI++) {
+                        if (preOligo.data.get(preI).getAminoAcid() == thisOverlap.data.get(codonI).getAminoAcid()) {
+                            //Makes sure that none of the oligos have a controlled codon in this position
+                            boolean isImportant = false;
+                            for (RNASequence backOligo : thisOverlap.backEdges) {
+                                for (Codon codon : codons) {
+                                    if (codon == backOligo.data.get(preI)) {
+                                        isImportant = true;
+                                    }
+                                }
+                            }
+                            if (isImportant) continue;
+                            //Swap the codon from every backEdge with thisOverlap's current codon
+                            Codon swapCodon = preOligo.data.get(preI);
+                            for (RNASequence backOligo : thisOverlap.backEdges) {
+                                backOligo.data.set(preI, thisOverlap.data.get(codonI));
+                            }
+                            thisOverlap.data.set(codonI, swapCodon);
+                            //If the swap made the overlap unique, good. If not, try the next swap for this codon.
+                            if (!matchesAnyPrevious(overlapRegion, overlapI)) break;
+                        }
+                    }
+                }
+                for (RNASequence backOligo : thisOverlap.backEdges) {
+                    int startPos = backOligo.data.size() - thisOverlap.data.size();
+                    for (int i = startPos; i < backOligo.data.size(); i++) {
+                        backOligo.data.set(i, thisOverlap.data.get(i - startPos));
+                    }
+                }
+                for (RNASequence forwardOligo : thisOverlap.forwardEdges) {
+                    for (int i = 0; i < thisOverlap.data.size(); i++) {
+                        forwardOligo.data.set(i, thisOverlap.data.get(i));
+                    }
+                }
+            }
+        }
         return;
+    }
+
+    private static boolean matches(RNASequence overlap1, RNASequence overlap2) {
+        for (int codonI = 0; codonI < overlap1.data.size() && codonI < overlap2.data.size(); codonI++) {
+            if (overlap1.data.get(codonI) != overlap2.data.get(codonI)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean matchesAnyPrevious(List<RNASequence> overlapRegion, int index) {
+        for (int prevOverlapI = 0; prevOverlapI < index; prevOverlapI++) {
+            if (matches(overlapRegion.get(index), overlapRegion.get(prevOverlapI))) {
+                return true;
+            }
+        }
+        return false;
     }
 }
