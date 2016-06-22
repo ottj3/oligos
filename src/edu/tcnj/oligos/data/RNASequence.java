@@ -8,7 +8,11 @@ import java.util.Map;
 public class RNASequence {
     public List<Codon> data = new ArrayList<>();
     public Map<AminoAcid, Integer> deltas = new HashMap<>();
+
     String label;
+
+    public List<RNASequence> forwardEdges = new ArrayList<>();
+    public List<RNASequence> backEdges = new ArrayList<>();
 
     public RNASequence(String label) {
         this.label = label;
