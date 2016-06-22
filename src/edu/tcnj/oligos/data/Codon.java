@@ -1,5 +1,11 @@
 package edu.tcnj.oligos.data;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public enum Codon {
     ATG("ATG", AminoAcid.MET),
     ACA("ACA", AminoAcid.THR),
@@ -88,19 +94,40 @@ public enum Codon {
     VAL("???", AminoAcid.VAL),
     STOP("???", AminoAcid.STOP);
 
-    private String name;
+    private String bases;
     private AminoAcid aa;
+    private static Map<AminoAcid, List<Codon>> acidCodonMap = new HashMap<>();
+    static {
+        for (Codon c : Codon.values()) {
+            if (acidCodonMap.containsKey(c.getAminoAcid())) {
+                acidCodonMap.get(c.getAminoAcid()).add(c);
+            } else {
+                List<Codon> list = new ArrayList<>();
+                list.add(c);
+                acidCodonMap.put(c.getAminoAcid(), list);
+            }
+        }
+    }
 
     Codon(String bases, AminoAcid aa) {
-        this.name = bases;
+        this.bases = bases;
         this.aa = aa;
     }
 
-    public String getName() {
-        return name;
+    public String getBases() {
+        return bases;
     }
 
     public AminoAcid getAminoAcid() {
         return aa;
+    }
+
+    public static List<Codon> getCodonsForAcid(AminoAcid acid) {
+        return Collections.unmodifiableList(acidCodonMap.get(acid));
+    }
+
+    @Override
+    public String toString() {
+        return bases.equals("???") ? aa.getName() : getBases();
     }
 }

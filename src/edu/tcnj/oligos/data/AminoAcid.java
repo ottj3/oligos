@@ -1,5 +1,8 @@
 package edu.tcnj.oligos.data;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum AminoAcid {
     ALA("A", "Alanine", Codon.ALA),
     ARG("R", "Arginine", Codon.ARG),
@@ -32,6 +35,12 @@ public enum AminoAcid {
     private String ch;
     private String name;
     private Codon wildcard;
+    private static Map<String, AminoAcid> seqMap = new HashMap<>();
+    static {
+        for (AminoAcid aa : AminoAcid.values()) {
+            seqMap.put(aa.getCh(), aa);
+        }
+    }
 
     public String getCh() {
         return ch;
@@ -43,5 +52,9 @@ public enum AminoAcid {
 
     public Codon getWildcard() {
         return wildcard;
+    }
+
+    public static AminoAcid getAcidForSymbol(String character) {
+        return seqMap.get(character);
     }
 }

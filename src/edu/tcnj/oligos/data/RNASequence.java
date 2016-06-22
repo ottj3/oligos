@@ -38,7 +38,7 @@ public class RNASequence {
                     data.set(i, newCodon);
                     numOccurrences++;
                 } else if (numOccurrences > numNeeded) {
-                    data.set(i, Codon.valueOf(data.get(i).getAminoAcid().toString()));
+                    data.set(i, data.get(i).getAminoAcid().getWildcard());
                 }
             }
         }
