@@ -24,7 +24,8 @@ public enum AminoAcid {
     TRP("W", "Tryptophan", Codon.TRP),
     TYR("Y", "Tyrosine", Codon.TYR),
     VAL("V", "Valine", Codon.VAL),
-    STOP(".", "Stop", Codon.STOP);
+    STOP("*", "Stop", Codon.STOP),
+    PAD("X", "Padding", Codon.PAD);
 
     AminoAcid(String ch, String name, Codon wildcard) {
         this.ch = ch;
@@ -56,5 +57,10 @@ public enum AminoAcid {
 
     public static AminoAcid getAcidForSymbol(String character) {
         return seqMap.get(character);
+    }
+
+    @Override
+    public String toString() {
+        return ch;
     }
 }

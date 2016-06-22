@@ -92,7 +92,9 @@ public enum Codon {
     TRP("???", AminoAcid.TRP),
     TYR("???", AminoAcid.TYR),
     VAL("???", AminoAcid.VAL),
-    STOP("???", AminoAcid.STOP);
+    STOP("???", AminoAcid.STOP),
+
+    PAD("???", AminoAcid.PAD);
 
     private String bases;
     private AminoAcid aa;
