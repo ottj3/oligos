@@ -41,8 +41,8 @@ public class Sequence extends AbstractList<Codon> {
     }
 
     @Override
-    public List<Codon> subList(int fromIndex, int toIndex) {
-        return sequence.subList(fromIndex, toIndex);
+    public Sequence subList(int fromIndex, int toIndex) {
+        return new Sequence(sequence.subList(fromIndex, toIndex));
     }
 
     public Sequence(String codons) {

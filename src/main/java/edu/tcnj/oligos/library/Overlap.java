@@ -8,25 +8,25 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkState;
 
 public class Overlap extends Sequence {
-    private List<Oligo> preAttachements;
+    private List<Oligo> preAttachments;
     private List<Oligo> postAttachments;
 
     public Overlap(List<Codon> codons) {
         super(codons);
-        this.preAttachements = new ArrayList<>();
+        this.preAttachments = new ArrayList<>();
         this.postAttachments = new ArrayList<>();
     }
 
     public void linkPreAttachment(Oligo preattach) {
-        preAttachements.add(preattach);
+        preAttachments.add(preattach);
     }
 
     public void linkPostAttachment(Oligo postattach) {
         postAttachments.add(postattach);
     }
 
-    public List<Oligo> getPreAttachements() {
-        return preAttachements;
+    public List<Oligo> getPreAttachments() {
+        return preAttachments;
     }
 
     public List<Oligo> getPostAttachments() {
@@ -36,7 +36,7 @@ public class Overlap extends Sequence {
     @Override
     public Codon set(int index, Codon codon) {
         Codon prev = sequence.set(index, codon);
-        for (Oligo oligo : preAttachements) {
+        for (Oligo oligo : preAttachments) {
             Codon prevO = oligo.set(oligo.size() - this.size() + index, codon);
             checkState(prevO == prev, "Sequence was changed directly after adding to Overlap region.");
         }
