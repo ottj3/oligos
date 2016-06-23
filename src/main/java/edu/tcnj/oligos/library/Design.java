@@ -20,6 +20,15 @@ public class Design {
         return null;
     }
 
+    List<Integer> getDeltasForRange(Fragment.Range range) {
+        for (Map.Entry<Fragment.Range, List<Integer>> entry : deltasForRange.entrySet()) {
+            if (entry.getKey().contains(range)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
     Iterator<Map.Entry<Fragment.Range, List<Integer>>> iterator() {
         return deltasForRange.entrySet().iterator();
     }

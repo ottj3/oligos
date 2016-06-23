@@ -1,18 +1,21 @@
 package edu.tcnj.oligos.library;
 
+import com.google.common.collect.Iterables;
 import edu.tcnj.oligos.data.Codon;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class Overlap extends Sequence {
+public class Overlap extends Oligo {
     private List<Oligo> preAttachments;
     private List<Oligo> postAttachments;
+    private int overlapLength = -1;
 
-    public Overlap(List<Codon> codons) {
-        super(codons);
+    public Overlap(Sequence codons, Map<Codon, Integer> deltas) {
+        super(codons, deltas);
         this.preAttachments = new ArrayList<>();
         this.postAttachments = new ArrayList<>();
     }
@@ -25,12 +28,19 @@ public class Overlap extends Sequence {
         postAttachments.add(postattach);
     }
 
-    public List<Oligo> getPreAttachments() {
-        return preAttachments;
-    }
+    public void finalizeLink(int overlapLength) {
+        checkState(this.overlapLength == -1);
+        checkState(!this.preAttachments.isEmpty());
+        checkState(!this.postAttachments.isEmpty());
 
-    public List<Oligo> getPostAttachments() {
-        return postAttachments;
+        this.overlapLength = overlapLength;
+        Oligo oligo = this.preAttachments.get(0);
+        this.setSequence(oligo.subList(oligo.size() - overlapLength, oligo.size()));
+        for (Oligo attachment : Iterables.concat(preAttachments, postAttachments)) {
+            checkState(Sequence.regionsMatch(this, 0, this.size(),
+                                attachment, attachment.size() - overlapLength, attachment.size()),
+                    "Linked to non-matching oligo: %s, %s", this, attachment);
+        }
     }
 
     @Override
