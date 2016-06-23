@@ -48,7 +48,8 @@ public class Fragment extends Sequence {
         AminoAcid acid = elem.getAminoAcid();
         for (int i = range.getStartPosition(); i < range.getEndPosition(); i++) {
             int offset = i - range.getStartPosition();
-            int startOfPositionI = offset * (oligoLength - overlapLength);
+            int smalligo = oligoLength - overlapLength;
+            int startOfPositionI = offset * smalligo;
             int positionInOligo = index - startOfPositionI;
             if (0 <= positionInOligo && positionInOligo < oligoLength) {
                 for (Oligo oligo : oligos.get(i)) {
@@ -131,16 +132,17 @@ public class Fragment extends Sequence {
 
     static class FragmentIterator implements Iterator<Fragment> {
 
+        // internal iterators
         private final Iterator<Map.Entry<Codon, Design>> designs;
-        private final Map<Integer, List<Oligo>> oligos;
-        private final Protein protein;
-        private final int oligoLength;
-        private final int overlapLength;
-        private final int size;
-
         private Iterator<Map.Entry<Range, List<Integer>>> ranges;
         private Iterator<Integer> deltas;
 
+        // passthrough to fragment constructor
+        private final Protein protein;
+        private final Map<Integer, List<Oligo>> oligos;
+        private final int oligoLength;
+        private final int overlapLength;
+        private final int size;
         private int delta;
         private Range range;
         private Codon codon;

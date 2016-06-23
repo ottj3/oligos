@@ -70,25 +70,11 @@ public class Sequence extends AbstractList<Codon> {
         return sequence;
     }
 
-    /**
-     * Swaps a Codon from pos1 of sequence1 with the Codon at pos2 of sequence2.
-     *
-     * @param sequence1 first sequence
-     * @param pos1 position in first sequence
-     * @param sequence2 second sequence
-     * @param pos2 position in second sequence
-     */
-    public static void swap(Sequence sequence1, int pos1, Sequence sequence2, int pos2) {
-        checkElementIndex(pos1, sequence1.size(), "seq1 & pos1");
-        checkElementIndex(pos2, sequence2.size(), "seq2 & pos2");
-        Codon temp = sequence1.set(pos1, sequence2.get(pos2));
-        sequence2.set(pos2, temp);
-    }
-
     public static boolean regionsMatch(Sequence seq1, Sequence seq2) {
         return regionsMatch(seq1, 0, seq1.size(), seq2, 0, seq2.size());
     }
 
+    // TODO potential non-1 number of differences needed
     public static boolean regionsMatch(Sequence seq1, int start1, int end1, Sequence seq2, int start2, int end2) {
         int length = end1 - start1;
         if (length != end2 - start2) {

@@ -3,9 +3,12 @@ package edu.tcnj.oligos.library;
 import com.google.common.collect.Iterables;
 import edu.tcnj.oligos.data.Codon;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -48,12 +51,67 @@ public class Overlap extends Oligo {
         Codon prev = sequence.set(index, codon);
         for (Oligo oligo : preAttachments) {
             Codon prevO = oligo.set(oligo.size() - this.size() + index, codon);
-            checkState(prevO == prev, "Sequence was changed directly after adding to Overlap region.");
+            checkState(prevO == prev);
         }
         for (Oligo oligo : postAttachments) {
             Codon prevO = oligo.set(index, codon);
-            checkState(prevO == prev, "Sequence was changed directly after adding to Overlap region.");
+            checkState(prevO == prev);
         }
         return prev;
+    }
+
+    public void swapWithPreAttachments(int overlapIndex, int preAttachIndex) {
+        Codon current = get(overlapIndex);
+        Codon target = preAttachments.get(0).get(preAttachIndex);
+        checkState(current.getAminoAcid() == target.getAminoAcid());
+        for (Oligo preAttachment : preAttachments) {
+            preAttachment.set(preAttachIndex, current);
+        }
+        set(overlapIndex, target);
+    }
+
+    static class OverlapIterator implements Iterator<Overlap> {
+        private Iterator<Map.Entry<Integer, List<Overlap>>> positionIterator;
+        private int currentPosition;
+        private Iterator<Overlap> overlapIterator;
+
+        public OverlapIterator(Map<Integer, List<Overlap>> overlaps) {
+            this.positionIterator = overlaps.entrySet().iterator();
+            checkState(this.positionIterator.hasNext());
+            Map.Entry<Integer, List<Overlap>> nextPosition = this.positionIterator.next();
+            this.overlapIterator = nextPosition.getValue().iterator();
+            checkState(this.overlapIterator.hasNext());
+        }
+
+        @Override
+        public boolean hasNext() {
+            return overlapIterator.hasNext() || positionIterator.hasNext();
+        }
+
+        @Override
+        public Overlap next() {
+            if (overlapIterator.hasNext()) {
+                return overlapIterator.next();
+            } else {
+                if (positionIterator.hasNext()) {
+                    Map.Entry<Integer, List<Overlap>> nextPos = positionIterator.next();
+                    this.overlapIterator = nextPos.getValue().iterator();
+
+                    this.currentPosition = nextPos.getKey();
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+            return null;
+        }
+
+        public int getCurrentPosition() {
+            return currentPosition;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
     }
 }
