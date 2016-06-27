@@ -9,13 +9,7 @@ import edu.tcnj.oligos.library.Fragment;
 import jep.Jep;
 import jep.JepException;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class PythonHandler {
 
@@ -38,13 +32,14 @@ public class PythonHandler {
         this.numFreqLevels = numFreqLevels;
     }
 
+    @SuppressWarnings("unchecked")
     public Map<AminoAcid, Design> run() {
         Object res = getDesigns(protein, acidsOfInterest, oligoLength, overlapLength,
                 minPercentages, maxPercentages, numFreqLevels);
         if (!(res instanceof List)) {
             throw new IllegalStateException();
         }
-        Map<AminoAcid, Map<Fragment.Range, Integer>> map = Maps.newHashMap();
+        Map<AminoAcid, Map<Fragment.Range, Integer>> map = Maps.newLinkedHashMap();
         List<Object> resList = ((List<Object>) res);
         for (Object o : resList) {
             List<Object> result = ((List<Object>) o);
@@ -61,7 +56,7 @@ public class PythonHandler {
             map.put(AminoAcid.getAcidForSymbol(acid),acidMap);
         }
         int i = 0;
-        Map<AminoAcid, Design> designs = Maps.newHashMap();
+        Map<AminoAcid, Design> designs = Maps.newLinkedHashMap();
         for (Map.Entry<AminoAcid, Map<Fragment.Range, Integer>> entry : map.entrySet()) {
             int numpts = numFreqLevels[i];
             double max = maxPercentages[i];
@@ -69,6 +64,7 @@ public class PythonHandler {
             int numGlobalOccurences = protein.length() - protein.replace(entry.getKey().getCh(), "").length();
             double delta = (max - min)/(numpts - 1) * numGlobalOccurences;
             designs.put(entry.getKey(), calculateDesign(numpts, delta, entry.getValue()));
+            i++;
         }
         return designs;
     }
@@ -188,13 +184,8 @@ public class PythonHandler {
         int OVERLAPSIZE = 6;
         double[] MINS = {.1, .1, .1};
         double[] MAXS = {.85, .85, .85};
-        int[] NUMPTS = {4, 4, 6};
+        int[] NUMPTS = {4, 6, 4};
         Map<AminoAcid, Design> res = (new PythonHandler(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS)).run();
-        if (res instanceof Collection) {
-            for (Object o : ((Collection) res)) {
-                System.out.println(o);
-            }
-        }
     }
 
     private Object getExampleDesigns() {
