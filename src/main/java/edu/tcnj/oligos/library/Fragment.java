@@ -43,7 +43,7 @@ public class Fragment extends Sequence {
 
     @Override
     public Codon set(int index, Codon elem) {
-        checkArgument(elem == codon);
+        checkArgument(elem.getAminoAcid() == codon.getAminoAcid());
         Codon temp = elem;
         AminoAcid acid = elem.getAminoAcid();
         for (int i = range.getStartPosition(); i < range.getEndPosition(); i++) {
@@ -61,7 +61,7 @@ public class Fragment extends Sequence {
         return temp;
     }
 
-    void fill() {
+    void fill(Map<Codon, Double> frequencies) {
         AminoAcid acid = codon.getAminoAcid();
         List<Integer> positionsOfInterest = Lists.newArrayList();
         int start = (range.getStartPosition() == 0 ? 0 : overlapLength);
@@ -73,12 +73,40 @@ public class Fragment extends Sequence {
         }
         Collections.shuffle(positionsOfInterest);
         for (int i = 0; i < delta; i++) {
-            set(i, codon);
+            set(positionsOfInterest.get(i), codon);
         }
-        Codon wildcard = acid.getWildcard();
-        for (int i = delta; i < positionsOfInterest.size(); i++) {
-            set(i, wildcard);
+        Map<Codon, Integer> counts = findCodonCounts(frequencies, positionsOfInterest.size() - delta);
+        int index = delta;
+        for (Map.Entry<Codon, Integer> entry : counts.entrySet()) {
+            for (int j = 0; j < entry.getValue(); j++) {
+                set(positionsOfInterest.get(index), entry.getKey());
+                index++;
+            }
         }
+    }
+
+    private Map<Codon, Integer> findCodonCounts(Map<Codon, Double> frequencies, int totalCount) {
+        Map<Codon, Integer> counts = Maps.newHashMap();
+        int totalSoFar = 0;
+        for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+            int thisCount = (int)(entry.getValue()*totalCount);
+            totalSoFar += thisCount;
+            counts.put(entry.getKey(), thisCount);
+        }
+        while (totalSoFar < totalCount) {
+            double maxDelta = 0;
+            Codon codonToIncrease = Codon.PAD;
+            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+                double thisDelta = entry.getValue() - counts.get(entry.getKey());
+                if (thisDelta > maxDelta) {
+                    maxDelta = thisDelta;
+                    codonToIncrease = entry.getKey();
+                }
+            }
+            counts.put(codonToIncrease, counts.get(codonToIncrease)+1);
+            totalSoFar++;
+        }
+        return counts;
     }
 
     static class Range {

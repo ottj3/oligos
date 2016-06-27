@@ -62,8 +62,8 @@ public class Library {
             if (deltasForPos != null) {
                 int size = oligos.size();
                 for (int i = 1; i < deltasForPos.size(); i++) {
-                    for (Map<Codon, Integer> oligo : oligos) {
-                        oligos.add(Maps.newHashMap(oligo));
+                    for (int j = 0; j < size; j++) {
+                        oligos.add(Maps.newHashMap(oligos.get(j)));
                     }
                 }
                 for (int i = 0; i < deltasForPos.size(); i++) {
@@ -104,8 +104,8 @@ public class Library {
             if (deltasForPos != null) {
                 int size = overlaps.size();
                 for (int i = 1; i < deltasForPos.size(); i++) {
-                    for (Map<Codon, Integer> overlap : overlaps) {
-                        overlaps.add(Maps.newHashMap(overlap));
+                    for (int j = 0; j < size; j++) {
+                        overlaps.add(Maps.newHashMap(overlaps.get(j)));
                     }
                 }
                 for (int i = 0; i < deltasForPos.size(); i++) {
