@@ -156,7 +156,13 @@ def compute_best_design(p, aoi, segsize, overlapsize, mins, maxs, numpts):
         for j in range(len(acidlist[i].designlist)):
             scorelist[i].append(acidlist[i].designlist[j].score)
     minindex, minscore, scorearray = compute_best_score_combo(scorelist)
-    return minindex, minscore, scorearray, acidlist
+    results = []
+    if type(minindex) == int:
+        results.append([aoi[0], acidlist[0].designlist[minindex].intervals, acidlist[0].required_acids])
+    else:
+        for i in range(len(acidlist)):
+            results.append([aoi[i], acidlist[i].designlist[minindex[i]].intervals, acidlist[i].required_acids])
+    return results
 
 if __name__ == '__main__':
     print 'Initializing design.py script.'
