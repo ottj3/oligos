@@ -2,8 +2,11 @@ package edu.tcnj.oligos.library;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.EnumBiMap;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.library.Fragment.FragmentIterator;
@@ -30,6 +33,7 @@ public class Library {
 
     private Map<Codon, Design> designs;
     private EnumBiMap<AminoAcid, Codon> codonsOfInterest = EnumBiMap.create(AminoAcid.class, Codon.class);
+    private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
     private Map<Integer, List<Oligo>> oligos;
     private Map<Integer, List<Overlap>> overlaps;
 
@@ -42,6 +46,39 @@ public class Library {
         this.smalligo = oligoLength - overlapLength;
         this.designs = designs;
         this.codonsOfInterest = codonsOfInterest;
+
+        this.codonFrequencies = calcFrequencies();
+    }
+
+    private Map<AminoAcid, Map<Codon, Double>> calcFrequencies() {
+        Map<AminoAcid, Multiset<Codon>> counts = Maps.newHashMap();
+        for (Codon codon : protein) {
+            AminoAcid acid = codon.getAminoAcid();
+            if (codonsOfInterest.containsKey(acid)) {
+                Multiset<Codon> codons = counts.get(acid);
+                if (codons == null) {
+                    codons = HashMultiset.create();
+                    counts.put(acid, codons);
+                    codons.add(codon);
+                } else {
+                    codons.add(codon);
+                }
+            }
+        }
+
+        Map<AminoAcid, Map<Codon, Double>> frequencies = Maps.newHashMap();
+        for (Map.Entry<AminoAcid, Multiset<Codon>> entry : counts.entrySet()) {
+            AminoAcid acid = entry.getKey();
+            frequencies.put(acid, Maps.<Codon, Double>newHashMap());
+            Multiset<Codon> codons = entry.getValue();
+            int total = codons.size();
+            for (Codon possible : Codon.getCodonsForAcid(acid)) {
+                int number = codons.count(possible);
+                double freq = number / total;
+                frequencies.get(acid).put(possible, freq);
+            }
+        }
+        return frequencies;
     }
 
     public void createOligos() {
@@ -84,7 +121,7 @@ public class Library {
     }
 
     public FragmentIterator fragmentIterator() {
-        return new FragmentIterator(designs, oligos, protein, oligoLength, overlapLength, size);
+        return new FragmentIterator(designs, oligos, protein, oligoLength, overlapLength, size, codonFrequencies);
     }
 
     public void fillFragments() {

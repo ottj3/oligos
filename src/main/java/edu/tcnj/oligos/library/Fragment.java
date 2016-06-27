@@ -24,13 +24,14 @@ public class Fragment extends Sequence {
     private final Range range;
     private final Integer delta;
     private final Map<Integer, List<Oligo>> oligos;
+    private final Map<Codon, Double> codonFreqs;
 
     public Map<Integer, List<Oligo>> getOligos() {
         return oligos;
     }
 
     private Fragment(Sequence protein, Codon codon, Range range, Integer delta, Map<Integer,
-            List<Oligo>> oligos, int oligoLength, int overlapLength, int size) {
+            List<Oligo>> oligos, int oligoLength, int overlapLength, int size, Map<Codon, Double> codonFreqs) {
         super(protein);
         this.codon = codon;
         this.range = range;
@@ -39,6 +40,7 @@ public class Fragment extends Sequence {
         this.oligoLength = oligoLength;
         this.overlapLength = overlapLength;
         this.size = size;
+        this.codonFreqs = codonFreqs;
     }
 
     @Override
@@ -61,7 +63,7 @@ public class Fragment extends Sequence {
         return temp;
     }
 
-    void fill(Map<Codon, Double> frequencies) {
+    void fill() {
         AminoAcid acid = codon.getAminoAcid();
         List<Integer> positionsOfInterest = Lists.newArrayList();
         int start = (range.getStartPosition() == 0 ? 0 : overlapLength);
@@ -75,7 +77,7 @@ public class Fragment extends Sequence {
         for (int i = 0; i < delta; i++) {
             set(positionsOfInterest.get(i), codon);
         }
-        Map<Codon, Integer> counts = findCodonCounts(frequencies, positionsOfInterest.size() - delta);
+        Map<Codon, Integer> counts = findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
         int index = delta;
         for (Map.Entry<Codon, Integer> entry : counts.entrySet()) {
             for (int j = 0; j < entry.getValue(); j++) {
@@ -89,7 +91,7 @@ public class Fragment extends Sequence {
         Map<Codon, Integer> counts = Maps.newHashMap();
         int totalSoFar = 0;
         for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-            int thisCount = (int)(entry.getValue()*totalCount);
+            int thisCount = (int) (entry.getValue() * totalCount);
             totalSoFar += thisCount;
             counts.put(entry.getKey(), thisCount);
         }
@@ -103,7 +105,7 @@ public class Fragment extends Sequence {
                     codonToIncrease = entry.getKey();
                 }
             }
-            counts.put(codonToIncrease, counts.get(codonToIncrease)+1);
+            counts.put(codonToIncrease, counts.get(codonToIncrease) + 1);
             totalSoFar++;
         }
         return counts;
@@ -175,8 +177,11 @@ public class Fragment extends Sequence {
         private Range range;
         private Codon codon;
 
+        private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
+
         FragmentIterator(Map<Codon, Design> designs, Map<Integer, List<Oligo>> oligos, Protein protein,
-                         int oligoLength, int overlapLength, int size) {
+                         int oligoLength, int overlapLength, int size,
+                         Map<AminoAcid, Map<Codon, Double>> codonFrequencies) {
             this.designs = designs.entrySet().iterator();
             checkState(this.designs.hasNext());
             this.ranges = this.designs.next().getValue().iterator();
@@ -189,6 +194,8 @@ public class Fragment extends Sequence {
             this.oligoLength = oligoLength;
             this.overlapLength = overlapLength;
             this.size = size;
+
+            this.codonFrequencies = codonFrequencies;
         }
 
         @Override
@@ -229,7 +236,8 @@ public class Fragment extends Sequence {
             }
 
             return new Fragment(range.subSequence(protein, oligoLength, overlapLength), codon, range, delta,
-                    filter(oligos, range, codon, delta), oligoLength, overlapLength, size);
+                    filter(oligos, range, codon, delta), oligoLength, overlapLength, size,
+                    codonFrequencies.get(codon.getAminoAcid()));
         }
 
         @Override
