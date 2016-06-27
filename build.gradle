@@ -6,6 +6,7 @@ repositories {
 
 dependencies {
     compile 'com.google.guava:guava:19.0'
+    compile files('libs/jep-3.5.3.jar')
 }
 
 jar.manifest.attributes 'Main-Class' : 'edu.tcnj.oligos.'

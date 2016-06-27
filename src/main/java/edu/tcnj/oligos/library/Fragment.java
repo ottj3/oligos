@@ -111,7 +111,7 @@ public class Fragment extends Sequence {
         return counts;
     }
 
-    static class Range {
+    public static class Range {
         private int startPosition;
         private int endPosition;
 
