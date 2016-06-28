@@ -34,7 +34,7 @@ public class PythonHandler {
 
     @SuppressWarnings("unchecked")
     public Map<AminoAcid, Design> run() {
-        Object res = getDesigns(protein, acidsOfInterest, oligoLength, overlapLength,
+        Object res = runScript(protein, acidsOfInterest, oligoLength, overlapLength,
                 minPercentages, maxPercentages, numFreqLevels);
         if (!(res instanceof List)) {
             throw new IllegalStateException();
@@ -43,9 +43,12 @@ public class PythonHandler {
         List<Object> resList = ((List<Object>) res);
         for (Object o : resList) {
             List<Object> result = ((List<Object>) o);
+            //Result: <string (acid name), list of list of ints (ranges), list of ints (number of occurrences)
             String acid = String.valueOf(result.get(0));
             List<Object> ranges = ((List<Object>) result.get(1));
             List<Integer> occurrencesList = ((List<Integer>) result.get(2));
+            //From the list of list of ints, build Fragment.Range objects
+            //and map them to the number of occurrences in the interval
             Map<Fragment.Range, Integer> acidMap = Maps.newHashMap();
             for (int i = 0; i < ranges.size(); i++) {
                 List<Integer> rangeList = ((List<Integer>) ranges.get(i));
@@ -53,24 +56,23 @@ public class PythonHandler {
                 int numOccurrences = occurrencesList.get(i);
                 acidMap.put(range, numOccurrences);
             }
-            map.put(AminoAcid.getAcidForSymbol(acid),acidMap);
+            //Build a map of amino acids to ranges to number of occurrences
+            map.put(AminoAcid.getAcidForSymbol(acid), acidMap);
         }
         int i = 0;
         Map<AminoAcid, Design> designs = Maps.newLinkedHashMap();
+        //Turn the map of acids to ranges to number of occurrences into a map of acids to designs
         for (Map.Entry<AminoAcid, Map<Fragment.Range, Integer>> entry : map.entrySet()) {
             int numpts = numFreqLevels[i];
             double max = maxPercentages[i];
             double min = minPercentages[i];
-            int numGlobalOccurences = protein.length() - protein.replace(entry.getKey().getCh(), "").length();
-            double delta = (max - min)/(numpts - 1) * numGlobalOccurences;
+            int numGlobalOccurrences = protein.length() - protein.replace(entry.getKey().getCh(), "").length();
+            double delta = (max - min) / (numpts - 1) * numGlobalOccurrences;
+            //For the given acid, figure out the design/deltas that optimally fit the data
             designs.put(entry.getKey(), calculateDesign(numpts, delta, entry.getValue()));
             i++;
         }
         return designs;
-    }
-
-    private Object getDesigns(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) {
-        return runScript(protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
     }
 
     private Object runScript(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) {
@@ -85,9 +87,11 @@ public class PythonHandler {
         return null;
     }
 
+    //Helper method used in calculateDesign;
+    //designs are calculated based on the prime factors of the number of regions
     private static List<Integer> primeFactors(int number) {
         int n = number;
-        List<Integer> factors = new ArrayList<Integer>();
+        List<Integer> factors = new ArrayList<>();
         for (int i = 2; i <= n; i++) {
             while (n % i == 0) {
                 factors.add(i);
@@ -97,6 +101,8 @@ public class PythonHandler {
         return factors;
     }
 
+    //Comparator used for calculateDesign; the map needs to be sorted in ascending order
+    //according to the number of occurrences (as the delta ranges are made from smallest to largest)
     private static Comparator<Map.Entry<Fragment.Range, Integer>> rangeComparator = new Comparator<Map.Entry<Fragment.Range, Integer>>() {
         @Override
         public int compare(Map.Entry<Fragment.Range, Integer> r1, Map.Entry<Fragment.Range, Integer> r2) {
@@ -105,7 +111,7 @@ public class PythonHandler {
     };
 
     private static Design calculateDesign(int numpts, double delta, Map<Fragment.Range, Integer> numInRegion) {
-        //List of ranges, ordered by numOccurrences
+        //List of ranges, to be ordered by numOccurrences
         List<Map.Entry<Fragment.Range, Integer>> ranges = Lists.newArrayList(numInRegion.entrySet());
 
         //When the delta lists are made, the first delta list has a smaller max than the second delta list, etc.
@@ -186,16 +192,6 @@ public class PythonHandler {
         double[] MAXS = {.85, .85, .85};
         int[] NUMPTS = {4, 6, 4};
         Map<AminoAcid, Design> res = (new PythonHandler(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS)).run();
-    }
-
-    private Object getExampleDesigns() {
-        String P = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFGYGVQCFARYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK";
-        String AOI = "TEV";
-        int SEGSIZE = 30;
-        int OVERLAPSIZE = 6;
-        double[] MINS = {.1, .1, .1};
-        double[] MAXS = {.85, .85, .85};
-        int[] NUMPTS = {4, 4, 6};
-        return runScript(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS);
+        return;
     }
 }
