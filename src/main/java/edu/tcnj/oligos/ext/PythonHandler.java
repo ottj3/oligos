@@ -192,6 +192,8 @@ public class PythonHandler {
         double[] MAXS = {.85, .85, .85};
         int[] NUMPTS = {4, 6, 4};
         Map<AminoAcid, Design> res = (new PythonHandler(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS)).run();
-        return;
+        for (Map.Entry<AminoAcid, Design> entry : res.entrySet()) {
+            System.out.println(entry.getKey() + " : " + entry.getValue());
+        }
     }
 }
