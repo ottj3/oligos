@@ -74,7 +74,7 @@ public class Library {
             int total = codons.size();
             for (Codon possible : Codon.getCodonsForAcid(acid)) {
                 int number = codons.count(possible);
-                double freq = number / total;
+                double freq = number / (double) total;
                 frequencies.get(acid).put(possible, freq);
             }
         }
@@ -131,6 +131,14 @@ public class Library {
         }
     }
 
+    public void createOverlaps() {
+        if (overlaps != null) return;
+        overlaps = Maps.newHashMap();
+        for (int i = 0; i < size - 1; i++) {
+            createOverlapsForPosition(i);
+        }
+    }
+
     private void createOverlapsForPosition(int pos) {
         checkArgument(0 <= pos && pos < size - 1);
         List<Map<Codon, Integer>> overlaps = Lists.newArrayList();
@@ -157,20 +165,31 @@ public class Library {
         for (Map<Codon, Integer> deltas : overlaps) {
             Overlap overlap = new Overlap(null, deltas);
             for (Oligo oligo : oligos.get(pos)) {
+                boolean matches = true;
                 for (Map.Entry<Codon, Integer> entry : deltas.entrySet()) {
-                    if (Objects.equals(deltas.get(entry.getKey()), oligo.getDeltas().get(entry.getKey()))) {
-                        overlap.linkPreAttachment(oligo);
+                    if (!Objects.equals(entry.getValue(), oligo.getDeltas().get(entry.getKey()))) {
+                        matches = false;
+                        break;
                     }
+                }
+                if (matches) {
+                    overlap.linkPreAttachment(oligo);
                 }
             }
             for (Oligo oligo : oligos.get(pos + 1)) {
+                boolean matches = true;
                 for (Map.Entry<Codon, Integer> entry : deltas.entrySet()) {
-                    if (Objects.equals(deltas.get(entry.getKey()), oligo.getDeltas().get(entry.getKey()))) {
-                        overlap.linkPostAttachment(oligo);
+                    if (!Objects.equals(entry.getValue(), oligo.getDeltas().get(entry.getKey()))) {
+                        matches = false;
+                        break;
                     }
+                }
+                if (matches) {
+                    overlap.linkPostAttachment(oligo);
                 }
             }
             overlap.finalizeLink(overlapLength);
+            retOverlaps.add(overlap);
         }
 
         this.overlaps.put(pos, retOverlaps);
@@ -189,7 +208,7 @@ public class Library {
         // position      indices
         Map<Integer, List<Integer>> permutations = Maps.newHashMap();
         for (int pos = 0; pos < size; pos++) {
-            List<Integer> list = Lists.newArrayList(Collections.nCopies(overlapLength, 0));
+            List<Integer> list = Lists.newArrayList(Collections.nCopies(overlapLength, -1));
             permutations.put(pos, list);
         }
 
@@ -207,6 +226,7 @@ public class Library {
                 // swap all possible indices of current overlap based on permutation indices
                 for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
                     int permutationIndex = permutations.get(pos).get(overlapIndex);
+                    if (permutationIndex == -1) continue;
                     List<Integer> swaps = potentialSwaps.get(pos).get(overlapIndex);
                     if (swaps == null || swaps.isEmpty()) continue;
                     int preAttachIndex = swaps.get(permutationIndex);
@@ -215,15 +235,15 @@ public class Library {
 
                 // increment permutation indices
                 int overlapPos = 0;
-                List<Integer> perm = permutations.get(0);
+                List<Integer> perm = permutations.get(pos);
                 perm.set(overlapPos, perm.get(overlapPos) + 1);
-                while (perm.get(overlapPos) >= potentialSwaps.get(pos).get(overlapPos).size()) {
-                    perm.set(overlapPos, 0);
+                while (perm.get(overlapPos) >= potentialSwaps.get(pos).get(overlapPos).size() && overlapPos + 1 < perm.size()) {
+                    perm.set(overlapPos, -1);
                     overlapPos++;
+//                    if (overlapPos >= perm.size()) {
+//                        break;
+//                    }
                     perm.set(overlapPos, perm.get(overlapPos) + 1);
-                    if (overlapPos >= perm.size()) {
-                        break;
-                    }
                 }
             }
 
@@ -253,6 +273,7 @@ public class Library {
         Map<Integer, List<Integer>> overlapToCodons = Maps.newHashMap();
         for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
             int start = pos * smalligo;
+            overlapToCodons.put(overlapIndex, Lists.<Integer>newArrayList());
             for (int codonIndex = 0; codonIndex < smalligo; codonIndex++) {
                 int globalCodonIndex = codonIndex + start;
                 int globalOverlapIndex = start + smalligo + overlapIndex;
@@ -261,29 +282,25 @@ public class Library {
                 if (target != current && target.getAminoAcid() == current.getAminoAcid()) {
                     boolean important = false;
                     for (Overlap overlap : overlaps.get(pos)) {
-                        Codon codonAtPos = overlap.get(overlapIndex);
-                        if (codonsOfInterest.containsValue(codonAtPos)) {
-                            important = true;
-                            break;
+//                        Codon codonInOverlap = overlap.get(overlapIndex);
+//                        if (codonsOfInterest.containsValue(codonInOverlap)) {
+//                            important = true;
+//                            break;
+//                        }
+                        for (Oligo oligo : overlap.getPreAttachments()) {
+                            Codon codonAtPos = oligo.get(codonIndex);
+                            if (codonsOfInterest.containsValue(codonAtPos) && !overlap.getDeltas().containsKey(codonAtPos)) {
+                                important = true;
+                                break;
+                            }
                         }
                     }
-                    for (Oligo oligo : oligos.get(pos)) {
-                        Codon codonAtPos = oligo.get(codonIndex);
-                        if (codonsOfInterest.containsValue(codonAtPos)) {
-                            important = true;
-                            break;
-                        }
-                    }
+
                     if (important) {
                         continue;
                     }
-                    if (overlapToCodons.containsKey(overlapIndex)) {
-                        overlapToCodons.get(overlapIndex).add(codonIndex);
-                    } else {
-                        List<Integer> list = Lists.newArrayList();
-                        list.add(codonIndex);
-                        overlapToCodons.put(overlapIndex, list);
-                    }
+
+                    overlapToCodons.get(overlapIndex).add(codonIndex);
                 }
 
             }
@@ -291,18 +308,21 @@ public class Library {
         return overlapToCodons;
     }
 
+    public Map<Integer, List<Oligo>> getOligos() {
+        return oligos;
+    }
+
     public static class Builder {
         private String proteinRNA = "";
         private int seqStart = -1;
         private int seqEnd;
-        private int size = -1;
         private int oligoLength = -1;
         private int overlapSize = -1;
         private Map<Codon, Design> designs;
         private EnumBiMap<AminoAcid, Codon> codonsOfInterest;
 
         public Builder withSequenceLength(int start, int end) {
-            checkArgument(start >= 0 && start < end,
+            checkArgument(start < end,
                     "Invalid start and end positions for sequence: %s, %s", start, end);
             this.seqStart = start;
             this.seqEnd = end;
@@ -310,15 +330,9 @@ public class Library {
         }
 
         public Builder withProteinFromRNA(String rna) {
-            checkArgument(Strings.isNullOrEmpty(rna), "Empty input RNA.");
-            checkArgument(rna.length() % 3 != 0, "Input RNA length not multiple of 3.");
+            checkArgument(!Strings.isNullOrEmpty(rna), "Empty input RNA.");
+            checkArgument(rna.length() % 3 == 0, "Input RNA length not multiple of 3.");
             this.proteinRNA = rna;
-            return this;
-        }
-
-        public Builder withPositions(int positions) {
-            checkArgument(positions > 0, "Must have positive number of positions.");
-            this.size = positions;
             return this;
         }
 
@@ -351,6 +365,7 @@ public class Library {
             Protein protein = (seqStart == -1)
                     ? new Protein(new Sequence(proteinRNA))
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
+            int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
 
             return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest);
         }

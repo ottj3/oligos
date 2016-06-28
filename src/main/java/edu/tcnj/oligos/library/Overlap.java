@@ -37,12 +37,17 @@ public class Overlap extends Oligo {
         checkState(!this.postAttachments.isEmpty());
 
         this.overlapLength = overlapLength;
-        Oligo oligo = this.preAttachments.get(0);
+        Oligo oligo = preAttachments.get(0);
         this.setSequence(oligo.subList(oligo.size() - overlapLength, oligo.size()));
-        for (Oligo attachment : Iterables.concat(preAttachments, postAttachments)) {
+        for (Oligo attachment : preAttachments) {
             checkState(Sequence.regionsMatch(this, 0, this.size(),
                                 attachment, attachment.size() - overlapLength, attachment.size()),
-                    "Linked to non-matching oligo: %s, %s", this, attachment);
+                    "Linked to non-matching pre oligo: %s, %s", this, attachment);
+        }
+        for (Oligo attachment : postAttachments) {
+            checkState(Sequence.regionsMatch(this, 0, this.size(),
+                    attachment, 0, this.size()),
+                    "Linked to non-matching post oligo: %s, %s", this, attachment);
         }
     }
 
@@ -68,6 +73,10 @@ public class Overlap extends Oligo {
             preAttachment.set(preAttachIndex, current);
         }
         set(overlapIndex, target);
+    }
+
+    public List<Oligo> getPreAttachments() {
+        return preAttachments;
     }
 
     static class OverlapIterator implements Iterator<Overlap> {
@@ -98,11 +107,15 @@ public class Overlap extends Oligo {
                     this.overlapIterator = nextPos.getValue().iterator();
 
                     this.currentPosition = nextPos.getKey();
+                    if (overlapIterator.hasNext()) {
+                        return overlapIterator.next();
+                    } else {
+                        throw new NoSuchElementException();
+                    }
                 } else {
                     throw new NoSuchElementException();
                 }
             }
-            return null;
         }
 
         public int getCurrentPosition() {

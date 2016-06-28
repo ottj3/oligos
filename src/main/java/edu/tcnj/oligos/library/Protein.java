@@ -1,7 +1,9 @@
 package edu.tcnj.oligos.library;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.Lists;
 import edu.tcnj.oligos.data.AminoAcid;
+import edu.tcnj.oligos.data.Codon;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,48 +17,35 @@ public class Protein extends Sequence {
     }
 
     public Protein(Sequence sequence, int start, int end) {
-        List<AminoAcid> tempSeq = new ArrayList<>(sequence.size());
-        for (int i = 0; i < sequence.size(); i++) {
-            if (i < start || i > end) {
+        List<AminoAcid> tempSeq = new ArrayList<>(end - start);
+        List<Codon> tempCodons = new ArrayList<>(end - start);
+        while (start < 0) {
+            tempSeq.add(AminoAcid.PAD);
+            tempCodons.add(Codon.PAD);
+            start++;
+        }
+        for (int i = 0; i < end; i++) {
+            if (i < start || i >= sequence.size()) {
                 tempSeq.add(AminoAcid.PAD);
+                tempCodons.add(Codon.PAD);
             } else {
-                tempSeq.add(sequence.get(i).getAminoAcid());
+                Codon c = sequence.get(i - start);
+                tempCodons.add(c);
+                tempSeq.add(c.getAminoAcid());
             }
         }
         this.aaSeq = Collections.unmodifiableList(tempSeq);
-        this.setSequence(Collections.unmodifiableList(sequence));
+        this.setSequence(Collections.unmodifiableList(tempCodons));
     }
-
-    /*
-    // Uncomment these constructors and method if, for some reason, we have to
-    // get an input amino acid sequence without a corresponding RNA sequence.
 
     public Protein(String string) {
-        this(string, 0, string.length());
-    }
-    public Protein(String string, int start, int end) {
-        List<AminoAcid> tempSeq = new ArrayList<>();
-        char[] chars = string.toCharArray();
-        for (int i = 0; i < chars.length; i++) {
-            AminoAcid acid;
-            if (i < start || i > end) {
-                acid = AminoAcid.PAD;
-            } else {
-                acid = AminoAcid.getAcidForSymbol(String.valueOf(chars[i]));
-            }
-            tempSeq.add(acid);
+        super(string);
+        this.aaSeq = Lists.newArrayList();
+        for (Codon codon : this.sequence) {
+            this.aaSeq.add(codon.getAminoAcid());
         }
-        this.aaSeq = Collections.unmodifiableList(tempSeq);
-        this.setSequence(acidsToWildcardCodons(tempSeq));
+        this.aaSeq = Collections.unmodifiableList(aaSeq);
     }
-    private static List<Codon> acidsToWildcardCodons(List<AminoAcid> seq) {
-        List<Codon> list = new ArrayList<>(seq.size() * 3);
-        for (AminoAcid aminoAcid : seq) {
-            list.add(aminoAcid.getWildcard());
-        }
-        return list;
-    }
-    */
 
     public List<AminoAcid> getAminoAcidSequence() {
         return aaSeq;

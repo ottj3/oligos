@@ -2,6 +2,7 @@ package edu.tcnj.oligos.library;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import edu.tcnj.oligos.data.Codon;
 
 import java.util.AbstractList;
@@ -42,7 +43,7 @@ public class Sequence extends AbstractList<Codon> {
 
     @Override
     public Sequence subList(int fromIndex, int toIndex) {
-        return new Sequence(sequence.subList(fromIndex, toIndex));
+        return new Sequence(Lists.newArrayList(sequence.subList(fromIndex, toIndex)));
     }
 
     public Sequence(String codons) {

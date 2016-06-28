@@ -48,7 +48,7 @@ public class Fragment extends Sequence {
         checkArgument(elem.getAminoAcid() == codon.getAminoAcid());
         Codon temp = elem;
         AminoAcid acid = elem.getAminoAcid();
-        for (int i = range.getStartPosition(); i < range.getEndPosition(); i++) {
+        for (int i = range.getStartPosition(); i <= range.getEndPosition(); i++) {
             int offset = i - range.getStartPosition();
             int smalligo = oligoLength - overlapLength;
             int startOfPositionI = offset * smalligo;
@@ -96,7 +96,7 @@ public class Fragment extends Sequence {
             counts.put(entry.getKey(), thisCount);
         }
         while (totalSoFar < totalCount) {
-            double maxDelta = 0;
+            double maxDelta = Double.NEGATIVE_INFINITY;
             Codon codonToIncrease = Codon.PAD;
             for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
                 double thisDelta = entry.getValue() - counts.get(entry.getKey());
@@ -173,9 +173,11 @@ public class Fragment extends Sequence {
         private final int oligoLength;
         private final int overlapLength;
         private final int size;
+
+        // iterated
         private int delta;
-        private Range range;
         private Codon codon;
+        private Range range;
 
         private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
 
@@ -184,9 +186,15 @@ public class Fragment extends Sequence {
                          Map<AminoAcid, Map<Codon, Double>> codonFrequencies) {
             this.designs = designs.entrySet().iterator();
             checkState(this.designs.hasNext());
-            this.ranges = this.designs.next().getValue().iterator();
+            Map.Entry<Codon, Design> firstDesign = this.designs.next();
+            codon = firstDesign.getKey();
+
+            this.ranges = firstDesign.getValue().iterator();
             checkState(this.ranges.hasNext());
-            this.deltas = this.ranges.next().getValue().iterator();
+            Map.Entry<Range, List<Integer>> firstRange = this.ranges.next();
+            range = firstRange.getKey();
+
+            this.deltas = firstRange.getValue().iterator();
             checkState(this.deltas.hasNext());
 
             this.oligos = oligos;
@@ -248,7 +256,7 @@ public class Fragment extends Sequence {
         private static Map<Integer, List<Oligo>> filter(Map<Integer, List<Oligo>> oligoMap,
                                                         Range range, Codon codon, int delta) {
             Map<Integer, List<Oligo>> map = Maps.newHashMap();
-            for (int i = range.getStartPosition(); i < range.getEndPosition(); i++) {
+            for (int i = range.getStartPosition(); i <= range.getEndPosition(); i++) {
                 List<Oligo> oligoList = oligoMap.get(i);
                 for (Oligo oligo : oligoList) {
                     Map<Codon, Integer> deltas = oligo.getDeltas();

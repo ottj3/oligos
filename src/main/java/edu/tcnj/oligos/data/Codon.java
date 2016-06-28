@@ -72,35 +72,36 @@ public enum Codon {
     TGA("TGA", AminoAcid.STOP),
     TAG("TAG", AminoAcid.STOP),
 
-    ALA("???", AminoAcid.ALA),
-    ARG("???", AminoAcid.ARG),
-    ASN("???", AminoAcid.ASN),
-    ASP("???", AminoAcid.ASP),
-    CYS("???", AminoAcid.CYS),
-    GLN("???", AminoAcid.GLN),
-    GLU("???", AminoAcid.GLU),
-    GLY("???", AminoAcid.GLY),
-    HIS("???", AminoAcid.HIS),
-    LEU("???", AminoAcid.LEU),
-    LYS("???", AminoAcid.LYS),
-    ILE("???", AminoAcid.ILE),
-    MET("???", AminoAcid.MET),
-    PHE("???", AminoAcid.PHE),
-    PRO("???", AminoAcid.PRO),
-    SER("???", AminoAcid.SER),
-    THR("???", AminoAcid.THR),
-    TRP("???", AminoAcid.TRP),
-    TYR("???", AminoAcid.TYR),
-    VAL("???", AminoAcid.VAL),
-    STOP("???", AminoAcid.STOP),
+    ALA("???", AminoAcid.ALA, true),
+    ARG("???", AminoAcid.ARG, true),
+    ASN("???", AminoAcid.ASN, true),
+    ASP("???", AminoAcid.ASP, true),
+    CYS("???", AminoAcid.CYS, true),
+    GLN("???", AminoAcid.GLN, true),
+    GLU("???", AminoAcid.GLU, true),
+    GLY("???", AminoAcid.GLY, true),
+    HIS("???", AminoAcid.HIS, true),
+    LEU("???", AminoAcid.LEU, true),
+    LYS("???", AminoAcid.LYS, true),
+    ILE("???", AminoAcid.ILE, true),
+    MET("???", AminoAcid.MET, true),
+    PHE("???", AminoAcid.PHE, true),
+    PRO("???", AminoAcid.PRO, true),
+    SER("???", AminoAcid.SER, true),
+    THR("???", AminoAcid.THR, true),
+    TRP("???", AminoAcid.TRP, true),
+    TYR("???", AminoAcid.TYR, true),
+    VAL("???", AminoAcid.VAL, true),
+    STOP("???", AminoAcid.STOP, true),
 
-    PAD("???", AminoAcid.PAD);
+    PAD("???", AminoAcid.PAD, true);
 
     private String bases;
     private AminoAcid aa;
     private static Map<AminoAcid, List<Codon>> acidCodonMap = new HashMap<>();
     static {
         for (Codon c : Codon.values()) {
+            if (c.bases.equals("???")) continue;
             if (acidCodonMap.containsKey(c.getAminoAcid())) {
                 acidCodonMap.get(c.getAminoAcid()).add(c);
             } else {
@@ -112,8 +113,15 @@ public enum Codon {
     }
 
     Codon(String bases, AminoAcid aa) {
+        this(bases, aa, false);
+    }
+
+    Codon(String bases, AminoAcid aa, boolean isWildcard) {
         this.bases = bases;
         this.aa = aa;
+        if (isWildcard) {
+            aa.setWildcard(this);
+        }
     }
 
     public String getBases() {
