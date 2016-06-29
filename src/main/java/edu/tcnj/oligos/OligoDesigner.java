@@ -48,11 +48,11 @@ public class OligoDesigner {
         line = br.readLine();
         if (!Strings.isNullOrEmpty(line)) {
             split = line.split(" ");
-            start = Integer.parseInt(split[0]);
+            start = Integer.parseInt(split[0]) - 1;
             end = Integer.parseInt(split[1]);
         } else {
             start = 0;
-            end = seq.length() - 1;
+            end = seq.length();
         }
 
         // offset
@@ -83,9 +83,12 @@ public class OligoDesigner {
         }
         br.close();
 
-        String trimmedRNA = seq.substring(start, end - 2);
+        String trimmedRNA = seq.substring(start, end);
         Protein gene = new Protein(trimmedRNA);
         String proteinString = Joiner.on("").join(gene.getAminoAcidSequence());
+        for (int i = offset/3; i < 0; i++) {
+            proteinString = "*" + proteinString;
+        }
         String aoi = "";
         for (String s : codons) {
             aoi += Codon.valueOf(s).getAminoAcid().getCh();

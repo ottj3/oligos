@@ -446,7 +446,7 @@ public class Library {
 
     public static class Builder {
         private String proteinRNA = "";
-        private int seqStart = -1;
+        private int seqStart = Integer.MIN_VALUE;
         private int seqEnd;
         private int oligoLength = -1;
         private int overlapSize = -1;
@@ -505,7 +505,7 @@ public class Library {
             checkState(oligoLength != -1);
             checkState(overlapSize != -1);
             checkState(minFrequencies != null);
-            Protein protein = (seqStart == -1)
+            Protein protein = (seqStart == Integer.MIN_VALUE)
                     ? new Protein(new Sequence(proteinRNA))
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
             int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
