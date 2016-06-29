@@ -15,6 +15,14 @@ import java.util.NoSuchElementException;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
+/**
+ * A Fragment corresponds to a given range, and a specific
+ * delta for a codons of interest varied in that range.
+ * Also tracks and works on all oligos that have that
+ * specific delta for that codon. Used to fill these
+ * oligos so that they contribute towards the desired
+ * frequencies for the codons of interest
+ */
 public class Fragment extends Sequence {
 
     private final int overlapLength;
@@ -63,6 +71,12 @@ public class Fragment extends Sequence {
         return temp;
     }
 
+    /**
+     * Fills a fragment with delta of the codon of interest,
+     * and proportional numbers of all other codons for that
+     * acid (based on the frequency table built by the Library)
+     * arranged in random order
+     */
     void fill() {
         AminoAcid acid = codon.getAminoAcid();
         List<Integer> positionsOfInterest = Lists.newArrayList();
@@ -87,6 +101,10 @@ public class Fragment extends Sequence {
         }
     }
 
+    /**
+     * Stores a starting and ending position (both inclusive),
+     * each position corresponds to an oligo position in the overall protein.
+     */
     public static class Range {
         private int startPosition;
         private int endPosition;
@@ -96,6 +114,7 @@ public class Fragment extends Sequence {
             this.endPosition = endPosition;
         }
 
+        //Get the subsequence of the original RNA sequence that corresponds to this range
         Sequence subSequence(Sequence sequence, int oligoLength, int overlapLength) {
             int start = startPosition * (oligoLength - overlapLength);
             int end = endPosition * (oligoLength - overlapLength) + oligoLength;
@@ -136,6 +155,12 @@ public class Fragment extends Sequence {
         }
     }
 
+    /**
+     * Helps to iterate through every fragment for filling them.
+     * From designs, it iterates through every codon. For every codon,
+     * it iterates through every range. For every range, it iterates
+     * through every delta level.
+     */
     static class FragmentIterator implements Iterator<Fragment> {
 
         // internal iterators
@@ -156,6 +181,7 @@ public class Fragment extends Sequence {
         private final int size;
         private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
 
+        //Constructs the iterator and sets up the first fragment's info
         FragmentIterator(Map<Codon, Design> designs, Map<Integer, List<Oligo>> oligos, Protein protein,
                          int oligoLength, int overlapLength, int size,
                          Map<AminoAcid, Map<Codon, Double>> codonFrequencies) {
@@ -228,6 +254,8 @@ public class Fragment extends Sequence {
             throw new UnsupportedOperationException();
         }
 
+        //Filter out the overall position->list<olgio> map to only oligos from
+        //positions in the given range with the given codon->delta pairing
         private static Map<Integer, List<Oligo>> filter(Map<Integer, List<Oligo>> oligoMap,
                                                         Range range, Codon codon, int delta) {
             Map<Integer, List<Oligo>> map = Maps.newHashMap();

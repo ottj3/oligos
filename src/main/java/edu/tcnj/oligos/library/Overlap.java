@@ -10,6 +10,9 @@ import java.util.NoSuchElementException;
 
 import static com.google.common.base.Preconditions.checkState;
 
+/**
+ * A sequence that is part of neighboring oligos. Stores the oligos that should connect to it on both sides.
+ */
 public class Overlap extends Oligo {
     private List<Oligo> preAttachments;
     private List<Oligo> postAttachments;
@@ -29,6 +32,7 @@ public class Overlap extends Oligo {
         postAttachments.add(postAttach);
     }
 
+    //Set the contents of the overlap, and make sure that it matches all of the oligos linked to it
     void finalizeLink(int overlapLength) {
         checkState(this.overlapLength == -1);
         checkState(!this.preAttachments.isEmpty());
@@ -49,6 +53,7 @@ public class Overlap extends Oligo {
         }
     }
 
+    //Set the codon in all oligos that connect to this overlap (to keep the overlap regions matching)
     @Override
     public Codon set(int index, Codon codon) {
         Codon prev = sequence.set(index, codon);
@@ -63,13 +68,17 @@ public class Overlap extends Oligo {
         return prev;
     }
 
+    /**
+     * Swap a codon from an overlap into either its pre or post attachments.
+     */
     public void swapWithAttachments(int overlapIndex, int attachIndex, List<Oligo> attachments) {
         Codon current = get(overlapIndex);
         Codon target = attachments.get(0).get(attachIndex);
         checkState(current.getAminoAcid() == target.getAminoAcid());
         for (Oligo attachment : attachments) {
             if (attachment.get(attachIndex) != target) {
-                System.out.println("Codon at pre attach index does not match in swap.");
+                System.out.println("Codon at pre attach index does not match in swap. " +
+                        "Relative frequencies may be skewed.");
             }
             attachment.set(attachIndex, current);
         }
@@ -84,6 +93,11 @@ public class Overlap extends Oligo {
         return postAttachments;
     }
 
+    /**
+     * Helps to iterate through all overlaps for making sure they are unique.
+     * Iterates through every overlap position,
+     * and through every overlap in that position.
+     */
     static class OverlapIterator implements Iterator<Overlap> {
         private Iterator<Map.Entry<Integer, List<Overlap>>> positionIterator;
         private int currentPosition;
@@ -108,6 +122,7 @@ public class Overlap extends Oligo {
                 return overlapIterator.next();
             } else {
                 if (positionIterator.hasNext()) {
+                    //go to the next position, set up the overlap iterator for this position
                     Map.Entry<Integer, List<Overlap>> nextPos = positionIterator.next();
                     this.overlapIterator = nextPos.getValue().iterator();
 

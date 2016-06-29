@@ -6,6 +6,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Stores a map of fragment ranges to delta levels for one amino acid
+ */
 public class Design {
 
     private Map<Fragment.Range, List<Integer>> deltasForRange = new HashMap<>();

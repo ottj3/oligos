@@ -5,6 +5,9 @@ import edu.tcnj.oligos.data.Codon;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * A sequence set up for specific codon->delta mappings
+ */
 public class Oligo extends Sequence {
 
     private Map<Codon, Integer> deltas;
