@@ -38,9 +38,8 @@ public class OligoDesigner {
         List<Double> maxs = new ArrayList<>();
         List<Integer> numLevels = new ArrayList<>();
 
-        String line = null;
+        String line;
         String[] split;
-        int i = 0;
 
         // read sequence
         seq = br.readLine();
@@ -108,6 +107,13 @@ public class OligoDesigner {
             codonDesignMap.put(codonsOfInterest.get(entry.getKey()), entry.getValue());
         }
 
+        Map<Codon, Double> baseFrequencyMap = Maps.newEnumMap(Codon.class);
+        for (int i = 0; i < codons.size(); i++) {
+            Codon codon = Codon.valueOf(codons.get(i));
+            double baseFreq = mins.get(i);
+            baseFrequencyMap.put(codon, baseFreq);
+        }
+
         Library.Builder builder = new Library.Builder();
         // calculate the number of extra characters we need to pad in order to get a full oligo at the last position
         int smalligo = oligoSize - overlapSize;
@@ -119,6 +125,7 @@ public class OligoDesigner {
                 .withSequenceLength(offset / 3, rnaEnd / 3)
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)
+                .withMinFrequencies(baseFrequencyMap)
                 .build();
 
         lib.createOligos();

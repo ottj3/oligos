@@ -77,7 +77,7 @@ public class Fragment extends Sequence {
         for (int i = 0; i < delta; i++) {
             set(positionsOfInterest.get(i), codon);
         }
-        Map<Codon, Integer> counts = findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
+        Map<Codon, Integer> counts = Library.findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
         int index = delta;
         for (Map.Entry<Codon, Integer> entry : counts.entrySet()) {
             for (int j = 0; j < entry.getValue(); j++) {
@@ -85,30 +85,6 @@ public class Fragment extends Sequence {
                 index++;
             }
         }
-    }
-
-    private Map<Codon, Integer> findCodonCounts(Map<Codon, Double> frequencies, int totalCount) {
-        Map<Codon, Integer> counts = Maps.newHashMap();
-        int totalSoFar = 0;
-        for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-            int thisCount = (int) (entry.getValue() * totalCount);
-            totalSoFar += thisCount;
-            counts.put(entry.getKey(), thisCount);
-        }
-        while (totalSoFar < totalCount) {
-            double maxDelta = Double.NEGATIVE_INFINITY;
-            Codon codonToIncrease = Codon.PAD;
-            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-                double thisDelta = entry.getValue() - counts.get(entry.getKey());
-                if (thisDelta > maxDelta) {
-                    maxDelta = thisDelta;
-                    codonToIncrease = entry.getKey();
-                }
-            }
-            counts.put(codonToIncrease, counts.get(codonToIncrease) + 1);
-            totalSoFar++;
-        }
-        return counts;
     }
 
     public static class Range {

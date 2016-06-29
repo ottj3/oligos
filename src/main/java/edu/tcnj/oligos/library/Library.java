@@ -5,7 +5,6 @@ import com.google.common.collect.EnumBiMap;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Multiset;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Codon;
@@ -38,7 +37,7 @@ public class Library {
     private Map<Integer, List<Overlap>> overlaps;
 
     private Library(Protein protein, int size, int oligoLength, int overlapLength, Map<Codon, Design> designs,
-                    EnumBiMap<AminoAcid, Codon> codonsOfInterest) {
+                    EnumBiMap<AminoAcid, Codon> codonsOfInterest, Map<Codon, Double> minFreq) {
         this.protein = protein;
         this.size = size;
         this.oligoLength = oligoLength;
@@ -48,13 +47,14 @@ public class Library {
         this.codonsOfInterest = codonsOfInterest;
 
         this.codonFrequencies = calcFrequencies();
+        setBaseFrequencies(this.protein, minFreq);
     }
 
     private Map<AminoAcid, Map<Codon, Double>> calcFrequencies() {
         Map<AminoAcid, Multiset<Codon>> counts = Maps.newHashMap();
         for (Codon codon : protein) {
             AminoAcid acid = codon.getAminoAcid();
-            if (codonsOfInterest.containsKey(acid)) {
+            if (codonsOfInterest.containsKey(acid) && !codonsOfInterest.containsValue(codon)) {
                 Multiset<Codon> codons = counts.get(acid);
                 if (codons == null) {
                     codons = HashMultiset.create();
@@ -74,11 +74,92 @@ public class Library {
             int total = codons.size();
             for (Codon possible : Codon.getCodonsForAcid(acid)) {
                 int number = codons.count(possible);
+                if (number == 0) continue;
                 double freq = number / (double) total;
                 frequencies.get(acid).put(possible, freq);
             }
         }
         return frequencies;
+    }
+
+    private Protein setBaseFrequencies(Protein protein, Map<Codon, Double> minFreq) {
+        List<Codon> sequence = Lists.newArrayList(protein.getSequence());
+        for (Map.Entry<Codon, Double> entry : minFreq.entrySet()) {
+            Codon codonOfInterest = entry.getKey();
+            AminoAcid acidOfInterest = codonOfInterest.getAminoAcid();
+            Design design = designs.get(codonOfInterest);
+            double baseFreq = entry.getValue();
+
+            List<Integer> allCodonSpots = Lists.newArrayList();
+            for (int i = 0; i < sequence.size(); i++) {
+                if (sequence.get(i).getAminoAcid() == acidOfInterest) allCodonSpots.add(i);
+            }
+
+            List<Integer> potentialBaseCodonSpots = Lists.newArrayList();
+            for (int pos = 0; pos < size; pos++) {
+                if (design.getDeltasForPosition(pos) == null) {
+                    int start = pos == 0 ? 0 : pos * smalligo + overlapLength;
+                    for (int i = start; i < (pos + 1) * smalligo; i++) {
+                        if (protein.get(i).getAminoAcid() == acidOfInterest) {
+                            potentialBaseCodonSpots.add(i);
+                        }
+                    }
+                }
+                if (pos == size - 1 || design.getDeltasForRange(new Fragment.Range(pos, pos + 1)) == null) {
+                    int start = (pos + 1) * smalligo;
+                    for (int i = start; i < start + overlapLength; i++) {
+                        if (protein.get(i).getAminoAcid() == acidOfInterest) {
+                            potentialBaseCodonSpots.add(i);
+                        }
+                    }
+                }
+            }
+            Collections.shuffle(potentialBaseCodonSpots);
+            int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
+            potentialBaseCodonSpots = potentialBaseCodonSpots.subList(0, baseOccurrences);
+            for (int i = 0; i < baseOccurrences; i++) {
+                sequence.set(potentialBaseCodonSpots.get(i), codonOfInterest);
+            }
+
+
+            allCodonSpots.removeAll(potentialBaseCodonSpots);
+            Collections.shuffle(allCodonSpots);
+            Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
+                    allCodonSpots.size());
+            int index = 0;
+            for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
+                for (int j = 0; j < count.getValue(); j++) {
+                    sequence.set(allCodonSpots.get(index), count.getKey());
+                    index++;
+                }
+            }
+        }
+        protein.setSequence(sequence);
+        return protein;
+    }
+
+    public static Map<Codon, Integer> findCodonCounts(Map<Codon, Double> frequencies, int totalCount) {
+        Map<Codon, Integer> counts = Maps.newHashMap();
+        int totalSoFar = 0;
+        for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+            int thisCount = (int) (entry.getValue() * totalCount);
+            totalSoFar += thisCount;
+            counts.put(entry.getKey(), thisCount);
+        }
+        while (totalSoFar < totalCount) {
+            double maxDelta = Double.NEGATIVE_INFINITY;
+            Codon codonToIncrease = Codon.PAD;
+            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+                double thisDelta = entry.getValue() * totalCount - counts.get(entry.getKey());
+                if (thisDelta > maxDelta) {
+                    maxDelta = thisDelta;
+                    codonToIncrease = entry.getKey();
+                }
+            }
+            counts.put(codonToIncrease, counts.get(codonToIncrease) + 1);
+            totalSoFar++;
+        }
+        return counts;
     }
 
     public void createOligos() {
@@ -371,6 +452,7 @@ public class Library {
         private int overlapSize = -1;
         private Map<Codon, Design> designs;
         private EnumBiMap<AminoAcid, Codon> codonsOfInterest;
+        private Map<Codon, Double> minFrequencies;
 
         public Builder withSequenceLength(int start, int end) {
             checkArgument(start < end,
@@ -407,18 +489,28 @@ public class Library {
             return this;
         }
 
+        public Builder withMinFrequencies(Map<Codon, Double> frequencies) {
+//            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+//                checkArgument(codonsOfInterest.containsValue(entry.getKey()),
+//                        "Frequencies must be for codons of interest");
+//            }
+            this.minFrequencies = frequencies;
+            return this;
+        }
+
         public Library build() {
             checkState(!proteinRNA.isEmpty());
             checkState(designs != null);
             checkState(codonsOfInterest != null);
             checkState(oligoLength != -1);
             checkState(overlapSize != -1);
+            checkState(minFrequencies != null);
             Protein protein = (seqStart == -1)
                     ? new Protein(new Sequence(proteinRNA))
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
             int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
 
-            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest);
+            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest, minFrequencies);
         }
     }
 
