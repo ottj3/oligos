@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Oligo extends Sequence {
 
-    protected Map<Codon, Integer> deltas;
+    private Map<Codon, Integer> deltas;
 
     public Oligo(Sequence codons, Map<Codon, Integer> deltas) {
         super(codons);

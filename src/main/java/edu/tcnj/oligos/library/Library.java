@@ -344,9 +344,9 @@ public class Library {
             int attachIndex = swaps.get(permutationIndex);
 
             if (attachIndex < oligoLength) {
-                overlap.swapWithPreAttachments(overlapIndex, attachIndex);
+                overlap.swapWithAttachments(overlapIndex, attachIndex, overlap.getPreAttachments());
             } else {
-                overlap.swapWithPostAttachments(overlapIndex, attachIndex - oligoLength);
+                overlap.swapWithAttachments(overlapIndex, attachIndex - oligoLength, overlap.getPostAttachments());
             }
         }
     }

@@ -96,6 +96,7 @@ public class OligoDesigner {
         Map<AminoAcid, Design> designMap = pyth.run();
 
 
+        // get amino acids from codons
         Map<AminoAcid, Codon> codonsOfInterest = Maps.newEnumMap(AminoAcid.class);
         for (String codonStr : codons) {
             Codon codon = Codon.valueOf(codonStr);
@@ -128,11 +129,14 @@ public class OligoDesigner {
                 .withMinFrequencies(baseFrequencyMap)
                 .build();
 
+        // run functions
         lib.createOligos();
         lib.fillFragments();
 
         lib.createOverlaps();
         lib.makeOverlapsUnique();
+
+        // print output oligos
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<Integer, List<Oligo>> entry : lib.getOligos().entrySet()) {
             for (Oligo oligo : entry.getValue()) {
@@ -148,11 +152,5 @@ public class OligoDesigner {
         }
         System.out.println(sb.toString());
     }
-    // rna
-    // start end
-    // offset
-    // size overlap
-    // codon min max num
-    // codon ...
-    //
+
 }

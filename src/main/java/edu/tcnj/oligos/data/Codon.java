@@ -138,6 +138,6 @@ public enum Codon {
 
     @Override
     public String toString() {
-        return bases.equals("???") ? aa.getName() : getBases();
+        return bases.equals("???") ? aa.name() : getBases();
     }
 }

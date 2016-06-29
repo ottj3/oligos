@@ -79,8 +79,7 @@ public class PythonHandler {
         try {
             Jep jep = new Jep(false);
             jep.runScript("design.py");
-            Object res = jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
-            return res;
+            return jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
         } catch (JepException e) {
             e.printStackTrace();
         }
@@ -182,18 +181,4 @@ public class PythonHandler {
         return new Design(deltasForRange);
     }
 
-    // test
-    public static void main(String[] args) {
-        String P = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFGYGVQCFARYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK";
-        String AOI = "TEV";
-        int SEGSIZE = 30;
-        int OVERLAPSIZE = 6;
-        double[] MINS = {.1, .1, .1};
-        double[] MAXS = {.85, .85, .85};
-        int[] NUMPTS = {4, 6, 4};
-        Map<AminoAcid, Design> res = (new PythonHandler(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS)).run();
-        for (Map.Entry<AminoAcid, Design> entry : res.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue());
-        }
-    }
 }

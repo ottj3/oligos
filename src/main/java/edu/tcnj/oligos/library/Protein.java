@@ -1,5 +1,6 @@
 package edu.tcnj.oligos.library;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import edu.tcnj.oligos.data.AminoAcid;
@@ -54,8 +55,8 @@ public class Protein extends Sequence {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-                .add("aaSeq", aaSeq.toArray())
-                .add("seq", getSequence().toArray())
+                .add("aaSeq", Joiner.on("").join(aaSeq))
+                .add("seq", Joiner.on("").join(sequence))
                 .toString();
     }
 }

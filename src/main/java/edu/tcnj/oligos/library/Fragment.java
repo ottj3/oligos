@@ -142,19 +142,18 @@ public class Fragment extends Sequence {
         private final Iterator<Map.Entry<Codon, Design>> designs;
         private Iterator<Map.Entry<Range, List<Integer>>> ranges;
         private Iterator<Integer> deltas;
-
-        // passthrough to fragment constructor
-        private final Protein protein;
-        private final Map<Integer, List<Oligo>> oligos;
-        private final int oligoLength;
-        private final int overlapLength;
-        private final int size;
-
         // iterated
         private int delta;
         private Codon codon;
         private Range range;
 
+
+        // pass through to fragment constructor
+        private final Protein protein;
+        private final Map<Integer, List<Oligo>> oligos;
+        private final int oligoLength;
+        private final int overlapLength;
+        private final int size;
         private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
 
         FragmentIterator(Map<Codon, Design> designs, Map<Integer, List<Oligo>> oligos, Protein protein,

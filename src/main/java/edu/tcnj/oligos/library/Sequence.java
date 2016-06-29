@@ -1,5 +1,6 @@
 package edu.tcnj.oligos.library;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -92,8 +93,6 @@ public class Sequence extends AbstractList<Codon> {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
-                .add("seq", sequence.toArray())
-                .toString();
+        return Joiner.on("").join(sequence);
     }
 }

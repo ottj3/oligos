@@ -1,9 +1,7 @@
 package edu.tcnj.oligos.library;
 
-import com.google.common.collect.Iterables;
 import edu.tcnj.oligos.data.Codon;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -23,15 +21,15 @@ public class Overlap extends Oligo {
         this.postAttachments = new ArrayList<>();
     }
 
-    public void linkPreAttachment(Oligo preattach) {
-        preAttachments.add(preattach);
+    void linkPreAttachment(Oligo preAttach) {
+        preAttachments.add(preAttach);
     }
 
-    public void linkPostAttachment(Oligo postattach) {
-        postAttachments.add(postattach);
+    void linkPostAttachment(Oligo postAttach) {
+        postAttachments.add(postAttach);
     }
 
-    public void finalizeLink(int overlapLength) {
+    void finalizeLink(int overlapLength) {
         checkState(this.overlapLength == -1);
         checkState(!this.preAttachments.isEmpty());
         checkState(!this.postAttachments.isEmpty());
@@ -41,7 +39,7 @@ public class Overlap extends Oligo {
         this.setSequence(oligo.subList(oligo.size() - overlapLength, oligo.size()));
         for (Oligo attachment : preAttachments) {
             checkState(Sequence.regionsMatch(this, 0, this.size(),
-                                attachment, attachment.size() - overlapLength, attachment.size()),
+                    attachment, attachment.size() - overlapLength, attachment.size()),
                     "Linked to non-matching pre oligo: %s, %s", this, attachment);
         }
         for (Oligo attachment : postAttachments) {
@@ -65,24 +63,15 @@ public class Overlap extends Oligo {
         return prev;
     }
 
-    public void swapWithPreAttachments(int overlapIndex, int preAttachIndex) {
+    public void swapWithAttachments(int overlapIndex, int attachIndex, List<Oligo> attachments) {
         Codon current = get(overlapIndex);
-        Codon target = preAttachments.get(0).get(preAttachIndex);
+        Codon target = attachments.get(0).get(attachIndex);
         checkState(current.getAminoAcid() == target.getAminoAcid());
-        for (Oligo preAttachment : preAttachments) {
-            if (preAttachment.get(preAttachIndex) != target) System.out.println("Codon at pre attach index does not match in swap.");
-            preAttachment.set(preAttachIndex, current);
-        }
-        set(overlapIndex, target);
-    }
-
-    public void swapWithPostAttachments(int overlapIndex, int postAttachIndex) {
-        Codon current = get(overlapIndex);
-        Codon target = postAttachments.get(0).get(postAttachIndex);
-        checkState(current.getAminoAcid() == target.getAminoAcid());
-        for (Oligo postAttachment : postAttachments) {
-            if (postAttachment.get(postAttachIndex) != target) System.out.println("Codon at post attach index does not match in swap.");
-            postAttachment.set(postAttachIndex, current);
+        for (Oligo attachment : attachments) {
+            if (attachment.get(attachIndex) != target) {
+                System.out.println("Codon at pre attach index does not match in swap.");
+            }
+            attachment.set(attachIndex, current);
         }
         set(overlapIndex, target);
     }
