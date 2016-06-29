@@ -70,13 +70,29 @@ public class Overlap extends Oligo {
         Codon target = preAttachments.get(0).get(preAttachIndex);
         checkState(current.getAminoAcid() == target.getAminoAcid());
         for (Oligo preAttachment : preAttachments) {
+            if (preAttachment.get(preAttachIndex) != target) System.out.println("Codon at pre attach index does not match in swap.");
             preAttachment.set(preAttachIndex, current);
+        }
+        set(overlapIndex, target);
+    }
+
+    public void swapWithPostAttachments(int overlapIndex, int postAttachIndex) {
+        Codon current = get(overlapIndex);
+        Codon target = postAttachments.get(0).get(postAttachIndex);
+        checkState(current.getAminoAcid() == target.getAminoAcid());
+        for (Oligo postAttachment : postAttachments) {
+            if (postAttachment.get(postAttachIndex) != target) System.out.println("Codon at post attach index does not match in swap.");
+            postAttachment.set(postAttachIndex, current);
         }
         set(overlapIndex, target);
     }
 
     public List<Oligo> getPreAttachments() {
         return preAttachments;
+    }
+
+    public List<Oligo> getPostAttachments() {
+        return postAttachments;
     }
 
     static class OverlapIterator implements Iterator<Overlap> {

@@ -207,7 +207,7 @@ public class Library {
 
         // position      indices
         Map<Integer, List<Integer>> permutations = Maps.newHashMap();
-        for (int pos = 0; pos < size; pos++) {
+        for (int pos = 0; pos < size - 1; pos++) {
             List<Integer> list = Lists.newArrayList(Collections.nCopies(overlapLength, -1));
             permutations.put(pos, list);
         }
@@ -217,27 +217,28 @@ public class Library {
         while (it.hasNext()) {
             Overlap overlap = it.next();
             int pos = it.getCurrentPosition(); // must be after .next() call!!!
-
+            boolean matches = matchesAnyVisited(overlap, visited);
             // while current overlap is not unique (to all previous overlaps), start swapping
-            while (matchesAnyVisited(overlap, visited)) {
+            while (matches) {
                 // ensure we haven't overflowed possible permutation indices
                 checkState(permutations.get(pos).get(maxIndex) < potentialSwaps.get(pos).get(maxIndex).size());
 
                 // swap all possible indices of current overlap based on permutation indices
-                for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
-                    int permutationIndex = permutations.get(pos).get(overlapIndex);
-                    if (permutationIndex == -1) continue;
-                    List<Integer> swaps = potentialSwaps.get(pos).get(overlapIndex);
-                    if (swaps == null || swaps.isEmpty()) continue;
-                    int preAttachIndex = swaps.get(permutationIndex);
-                    overlap.swapWithPreAttachments(overlapIndex, preAttachIndex);
+                doOverlapPermutation(overlap, permutations.get(pos), potentialSwaps.get(pos));
+
+                matches = matchesAnyVisited(overlap, visited);
+
+                if (matches) {
+                    //Undo the swap if it is not unique (by swapping again with the same permutation indices)
+                    doOverlapPermutation(overlap, permutations.get(pos), potentialSwaps.get(pos));
                 }
 
                 // increment permutation indices
                 int overlapPos = 0;
                 List<Integer> perm = permutations.get(pos);
                 perm.set(overlapPos, perm.get(overlapPos) + 1);
-                while (perm.get(overlapPos) >= potentialSwaps.get(pos).get(overlapPos).size() && overlapPos + 1 < perm.size()) {
+                while (perm.get(overlapPos) >= potentialSwaps.get(pos).get(overlapPos).size()
+                        && overlapPos + 1 < perm.size()) {
                     perm.set(overlapPos, -1);
                     overlapPos++;
 //                    if (overlapPos >= perm.size()) {
@@ -249,6 +250,23 @@ public class Library {
 
             // add overlap to visted
             visited.add(overlap);
+        }
+    }
+
+    private void doOverlapPermutation(Overlap overlap, List<Integer> permutationIndices,
+                                      Map<Integer, List<Integer>> potentialSwap) {
+        for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
+            int permutationIndex = permutationIndices.get(overlapIndex);
+            if (permutationIndex == -1) continue;
+            List<Integer> swaps = potentialSwap.get(overlapIndex);
+            if (swaps == null || swaps.isEmpty()) continue;
+            int attachIndex = swaps.get(permutationIndex);
+
+            if (attachIndex < oligoLength) {
+                overlap.swapWithPreAttachments(overlapIndex, attachIndex);
+            } else {
+                overlap.swapWithPostAttachments(overlapIndex, attachIndex - oligoLength);
+            }
         }
     }
 
@@ -274,7 +292,8 @@ public class Library {
         for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
             int start = pos * smalligo;
             overlapToCodons.put(overlapIndex, Lists.<Integer>newArrayList());
-            for (int codonIndex = 0; codonIndex < smalligo; codonIndex++) {
+            int codonIndexStart = pos == 0 ? 0 : overlapLength;
+            for (int codonIndex = codonIndexStart; codonIndex < smalligo; codonIndex++) {
                 int globalCodonIndex = codonIndex + start;
                 int globalOverlapIndex = start + smalligo + overlapIndex;
                 Codon target = protein.get(globalCodonIndex);
@@ -301,6 +320,38 @@ public class Library {
                     }
 
                     overlapToCodons.get(overlapIndex).add(codonIndex);
+                }
+
+            }
+            //Post attachments
+            int codonIndexEnd = pos == size - 1 ? oligoLength : smalligo;
+            for (int codonIndex = overlapLength; codonIndex < codonIndexEnd; codonIndex++) {
+                int globalCodonIndex = codonIndex + start + smalligo;
+                int globalOverlapIndex = start + smalligo + overlapIndex;
+                Codon target = protein.get(globalCodonIndex);
+                Codon current = protein.get(globalOverlapIndex);
+                if (target != current && target.getAminoAcid() == current.getAminoAcid()) {
+                    boolean important = false;
+                    for (Overlap overlap : overlaps.get(pos)) {
+//                        Codon codonInOverlap = overlap.get(overlapIndex);
+//                        if (codonsOfInterest.containsValue(codonInOverlap)) {
+//                            important = true;
+//                            break;
+//                        }
+                        for (Oligo oligo : overlap.getPostAttachments()) {
+                            Codon codonAtPos = oligo.get(codonIndex);
+                            if (codonsOfInterest.containsValue(codonAtPos) && !overlap.getDeltas().containsKey(codonAtPos)) {
+                                important = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (important) {
+                        continue;
+                    }
+
+                    overlapToCodons.get(overlapIndex).add(codonIndex + oligoLength);
                 }
 
             }
