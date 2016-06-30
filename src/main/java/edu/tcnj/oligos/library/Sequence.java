@@ -12,11 +12,17 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkElementIndex;
 
+/**
+ * A list of codons, used to store RNA sequences.
+ * Also contains helper methods to determine if sequences match.
+ */
 public class Sequence extends AbstractList<Codon> {
     protected List<Codon> sequence;
 
-    Sequence() {}
+    Sequence() {
+    }
 
+    //Operations on the underlying list
     @Override
     public int size() {
         return sequence.size();
@@ -47,6 +53,11 @@ public class Sequence extends AbstractList<Codon> {
         return new Sequence(Lists.newArrayList(sequence.subList(fromIndex, toIndex)));
     }
 
+    /**
+     * Construct a sequence of codons from a string of RNA
+     *
+     * @param codons a string of bases/RNA
+     */
     public Sequence(String codons) {
         if (codons.length() % 3 != 0) {
             throw new IllegalArgumentException("Sequence constructed with invalid number of bases.");
@@ -72,12 +83,30 @@ public class Sequence extends AbstractList<Codon> {
         return sequence;
     }
 
+    /**
+     * Determine whether two sequences match
+     *
+     * @param seq1 the first sequence
+     * @param seq2 the second sequence
+     * @return boolean, true iff the sequences are identical
+     */
     public static boolean regionsMatch(Sequence seq1, Sequence seq2) {
         return regionsMatch(seq1, 0, seq1.size(), seq2, 0, seq2.size());
     }
 
-    // TODO potential non-1 number of differences needed
+    /**
+     * Determine whether two subsequences match
+     *
+     * @param seq1   the first sequence
+     * @param start1 the first sequence's start position
+     * @param end1   the first sequence's end position (exclusive)
+     * @param seq2   the second sequence
+     * @param start2 the second sequence's start position
+     * @param end2   the second sequence's end position (exclusive)
+     * @return boolean, true iff the sequences are identical
+     */
     public static boolean regionsMatch(Sequence seq1, int start1, int end1, Sequence seq2, int start2, int end2) {
+        // TODO potential non-1 number of differences needed
         int length = end1 - start1;
         if (length != end2 - start2) {
             return false;

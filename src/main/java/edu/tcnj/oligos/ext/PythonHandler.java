@@ -11,6 +11,9 @@ import jep.JepException;
 
 import java.util.*;
 
+/**
+ * Use Ryan's python script to figure out the optimal library, and then builds that library
+ */
 public class PythonHandler {
 
     private final String protein;
@@ -32,6 +35,10 @@ public class PythonHandler {
         this.numFreqLevels = numFreqLevels;
     }
 
+    /**
+     * Run the script itself and interpret the results
+     * @return A map of AminoAcids to the best designs for them
+     */
     @SuppressWarnings("unchecked")
     public Map<AminoAcid, Design> run() {
         Object res = runScript(protein, acidsOfInterest, oligoLength, overlapLength,
@@ -42,8 +49,8 @@ public class PythonHandler {
         Map<AminoAcid, Map<Fragment.Range, Integer>> map = Maps.newLinkedHashMap();
         List<Object> resList = ((List<Object>) res);
         for (Object o : resList) {
-            List<Object> result = ((List<Object>) o);
-            //Result: <string (acid name), list of list of ints (ranges), list of ints (number of occurrences)
+            List<Object> result = (List<Object>) o;
+            //Result: <string (acid name), list of list of ints (ranges), list of ints (number of occurrences)>
             String acid = String.valueOf(result.get(0));
             List<Object> ranges = ((List<Object>) result.get(1));
             List<Integer> occurrencesList = ((List<Integer>) result.get(2));
@@ -61,12 +68,13 @@ public class PythonHandler {
         }
         int i = 0;
         Map<AminoAcid, Design> designs = Maps.newLinkedHashMap();
-        //Turn the map of acids to ranges to number of occurrences into a map of acids to designs
+        //Turn the map of acids->ranges->number of occurrences into a map of acids->designs
         for (Map.Entry<AminoAcid, Map<Fragment.Range, Integer>> entry : map.entrySet()) {
             int numpts = numFreqLevels[i];
             double max = maxPercentages[i];
             double min = minPercentages[i];
             int numGlobalOccurrences = protein.length() - protein.replace(entry.getKey().getCh(), "").length();
+            //Figure out the number of oligos needed for one delta step
             double delta = (max - min) / (numpts - 1) * numGlobalOccurrences;
             //For the given acid, figure out the design/deltas that optimally fit the data
             designs.put(entry.getKey(), calculateDesign(numpts, delta, entry.getValue()));
@@ -121,7 +129,7 @@ public class PythonHandler {
         List<Integer> factorList = primeFactors(numpts);
         double bestOver = Double.POSITIVE_INFINITY;
         Map<Fragment.Range, List<Integer>> bestDesign = Maps.newHashMap();
-        //Try every possible design
+        //Try every possible design (every distinct permutation of the prime factors)
         for (List<Integer> factors : Collections2.orderedPermutations(factorList)) {
             Map<Fragment.Range, List<Integer>> levelsForRange = new HashMap<>();
             int stepSize = 1;

@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * A special sequence to store both a list of codons, and the
+ * corresponding list of amino acids that make up the protein
+ */
 public class Protein extends Sequence {
     private List<AminoAcid> aaSeq;
 
@@ -17,6 +21,14 @@ public class Protein extends Sequence {
         this(sequence, 0, sequence.size());
     }
 
+    /**
+     * Construct a protein from a subsequence of codons. Pads the codon
+     * sequence and the amino acid sequence according to start and end.
+     *
+     * @param sequence the codon sequence used to construct this protein
+     * @param start    the index of the first codon (offset from the start of sequence), can be positive or negative
+     * @param end      the index (exclusive) of the last codon from the sequence to be used. Can be greater than seq.size()
+     */
     public Protein(Sequence sequence, int start, int end) {
         List<AminoAcid> tempSeq = new ArrayList<>(end - start);
         List<Codon> tempCodons = new ArrayList<>(end - start);
@@ -39,6 +51,11 @@ public class Protein extends Sequence {
         this.setSequence(Collections.unmodifiableList(tempCodons));
     }
 
+    /**
+     * Constructs a protein based on a string of bases
+     *
+     * @param string a string of RNA to be used to fill the codon sequence and then the amino acid sequence
+     */
     public Protein(String string) {
         super(string);
         this.aaSeq = Lists.newArrayList();
