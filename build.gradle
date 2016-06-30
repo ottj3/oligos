@@ -1,12 +1,50 @@
 apply plugin: 'java'
 
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    }
+}
 repositories {
     mavenCentral()
 }
 
 dependencies {
     compile 'com.google.guava:guava:19.0'
+    compile 'com.intellij:forms_rt:7.0.3'
     compile files('libs/jep-3.5.3.jar')
 }
 
-jar.manifest.attributes 'Main-Class' : 'edu.tcnj.oligos.'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+shadowJar {
+    baseName = project.name
+    classifier = null
+    dependencies {
+        include(dependency('com.google.guava:guava:19.0'))
+        include(dependency('com.intellij:forms_rt:7.0.3'))
+    }
+}
+
+artifacts {
+    archives shadowJar
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'edu.tcnj.oligos.ui.OligoDesigner'
+    }
+}
+
+
+task copyJarToRun (type: Copy) {
+    from shadowJar
+    into 'run/'
+}
+
+copyJarToRun.dependsOn(shadowJar)
+build.dependsOn(copyJarToRun)

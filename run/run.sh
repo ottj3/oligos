@@ -1,0 +1,1 @@
+LD_LIBRARY_PATH=/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/amd64/:/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/amd64/server/ LD_PRELOAD=libs/libjep.so java -jar -Djava.library.path=libs/ -DoligoDesigner.fillInTestData=true oligos.jar
