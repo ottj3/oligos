@@ -518,6 +518,9 @@ public class Library {
     public Map<Integer, List<Oligo>> getOligos() {
         return oligos;
     }
+    public Map<Codon, Design> getDesigns() {
+        return designs;
+    }
 
     public static class Builder {
         private String proteinRNA = "";

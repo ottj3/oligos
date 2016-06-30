@@ -87,7 +87,9 @@ public class PythonHandler {
         try {
             Jep jep = new Jep(false);
             jep.runScript("design.py");
-            return jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
+            Object res = jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
+            // jep.close(); pending bugs in jep
+            return res;
         } catch (JepException e) {
             e.printStackTrace();
         }

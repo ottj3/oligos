@@ -1,10 +1,14 @@
 package edu.tcnj.oligos.ui;
 
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
+import edu.tcnj.oligos.data.Codon;
+import edu.tcnj.oligos.library.Design;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -51,6 +55,18 @@ public class OligoDesigner {
 
     public OligoDesigner() {
         createUIComponents();
+        if ("true".equals(System.getProperty("oligoDesigner.fillInTestData"))) {
+            setupTestData();
+        }
+    }
+
+    private void setupTestData() {
+        rnaInputField.setText("ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCGAGATACCCAGATCATATGAAACAGCATGACTTTTTCAAGAGTGCCATGCCTGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAA");
+        oligoLengthSpinner.setValue(90);
+        overlapSizeSpinner.setValue(18);
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"ACT", 0.1, 0.85, 4});
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GAA", 0.1, 0.85, 6});
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GTT", 0.1, 0.85, 4});
     }
 
     private void createUIComponents() {
@@ -79,6 +95,8 @@ public class OligoDesigner {
                 }
             }
         });
+        Font font = Font.decode("Courier 16");
+        outputArea.setFont(font);
 
         oligoLengthSpinner.setModel(new SpinnerNumberModel());
         ((JSpinner.DefaultEditor) oligoLengthSpinner.getEditor()).getTextField().setInputVerifier(new InputVerifier() {
@@ -110,7 +128,7 @@ public class OligoDesigner {
         // start, end, offset spinners
 
         // table
-        DefaultTableModel codonTableModel = ((DefaultTableModel) codonTable.getModel());
+        final DefaultTableModel codonTableModel = ((DefaultTableModel) codonTable.getModel());
         TableColumn col1 = new TableColumn(0);
         col1.setHeaderValue("Codon");
         codonTableModel.addColumn(col1);
@@ -129,6 +147,19 @@ public class OligoDesigner {
 
         codonTableModel.setColumnIdentifiers(new Object[]{"Codon", "Min Freq", "Max Freq", "# Levels"});
 
+//        final InputVerifier verifier = new InputVerifier() {
+//            @Override
+//            public boolean verify(JComponent jComponent) {
+//                JTextField field = ((JTextField) jComponent);
+//                String text = field.getText();
+//            }
+//        };
+//        codonTable.getColumn("Min Freq").setCellEditor(new DefaultCellEditor(new JTextField()) {
+//            @Override
+//            public boolean stopCellEditing() {
+//                return verifier.verify(editorComponent) && super.stopCellEditing();
+//            }
+//        });
         addCodonButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
@@ -143,6 +174,63 @@ public class OligoDesigner {
                 Collections.reverse(removed);
                 for (int row : removed) {
                     ((DefaultTableModel) codonTable.getModel()).removeRow(row);
+                }
+            }
+        });
+
+        calculateOligosButton.addActionListener(new ActionListener() {
+            private int val(Object obj) {
+                return (Integer) obj;
+            }
+
+            private List<String> codons() {
+                List<String> codons = Lists.newArrayList();
+                for (int i = 0; i < codonTable.getRowCount(); i++) {
+                    codons.add(String.valueOf(codonTable.getValueAt(i, 0)));
+                }
+                return codons;
+            }
+
+            private List<Double> freqs(int col) {
+                List<Double> freqs = Lists.newArrayList();
+                for (int i = 0; i < codonTable.getRowCount(); i++) {
+                    freqs.add(Double.parseDouble(String.valueOf(codonTable.getValueAt(i, col))));
+                }
+                return freqs;
+            }
+
+            private List<Integer> levels() {
+                List<Integer> levels = Lists.newArrayList();
+                for (int i = 0; i < codonTable.getRowCount(); i++) {
+                    levels.add(Integer.parseInt(String.valueOf(codonTable.getValueAt(i, 3))));
+                }
+                return levels;
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                try {
+                    Runner runner = new Runner(rnaInputField.getText(),
+                            val(seqStartSpinner.getValue()),
+                            val(seqEndSpinner.getValue()),
+                            val(seqOffsetSpinner.getValue()),
+                            val(oligoLengthSpinner.getValue()),
+                            val(overlapSizeSpinner.getValue()),
+                            codons(), freqs(1), freqs(2), levels()
+                    );
+                    runner.run();
+                    outputArea.setText("Design\n");
+                    outputArea.append("Codon\tRange->Deltas...\n");
+                    for (Map.Entry<Codon, Design> entry : runner.getLastLib().getDesigns().entrySet()) {
+                        outputArea.append(entry.getKey() + "\t" + entry.getValue() + "\n");
+                    }
+                    outputArea.append("\nOligos\n");
+                    outputArea.append(runner.getOligoOutput());
+                } catch (Exception ex) {
+                    outputArea.setText("There was an error running the program.\n"
+                            + ex.getMessage()
+                            + "\nPlease see console for details.");
+                    ex.printStackTrace();
                 }
             }
         });
