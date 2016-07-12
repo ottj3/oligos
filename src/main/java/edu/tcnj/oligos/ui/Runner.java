@@ -13,7 +13,6 @@ import edu.tcnj.oligos.library.Library;
 import edu.tcnj.oligos.library.Oligo;
 import edu.tcnj.oligos.library.Protein;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 

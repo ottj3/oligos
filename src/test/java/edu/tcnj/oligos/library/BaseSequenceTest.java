@@ -15,9 +15,9 @@ public class BaseSequenceTest {
         BaseSequence three = new BaseSequence(Lists.asList(Base.T, Base.T, new Base[]{Base.T, Base.A}));
         BaseSequence four = new BaseSequence(Lists.asList(Base.T, Base.T, new Base[]{Base.A}));
 
-        assertTrue(one.contains(two));
-        assertTrue(two.contains(one));
-        assertTrue(three.contains(four));
-        assertFalse(four.contains(three));
+        assertTrue(one.contains(two) != -1);
+        assertTrue(two.contains(one) != -1);
+        assertTrue(three.contains(four) != -1);
+        assertFalse(four.contains(three) != -1);
     }
 }

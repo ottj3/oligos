@@ -13,6 +13,7 @@ import edu.tcnj.oligos.library.Overlap.OverlapIterator;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,11 +52,70 @@ public class Library {
         this.smalligo = oligoLength - overlapLength;
         this.designs = designs;
         this.codonsOfInterest = codonsOfInterest;
+        this.restrictions = restrictions;
+
+        removeRestrictionEnzymes(this.protein);
 
         this.codonFrequencies = calcFrequencies();
         setBaseFrequencies(this.protein, minFreq);
+    }
 
-        this.restrictions = restrictions;
+    private void removeRestrictionEnzymes(Protein protein) {
+        if (restrictions == null || restrictions.isEmpty()) return;
+        Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
+        for (BaseSequence restriction : restrictions) {
+            int index = sequence.asBases().contains(restriction);
+
+            while (index != -1) {
+                //TODO check potential off-by-a-lots for firstCodon and lastCodon
+                int firstCodon = index / 3;
+                int lastCodon = (index + restriction.size() - 1) / 3;
+                Map<Integer, List<Integer>> potentialSwaps = new HashMap<>();
+                List<Integer> swapIndices = new ArrayList<>();
+                for (int i = firstCodon; i <= lastCodon; i++) {
+                    swapIndices.add(0);
+                    potentialSwaps.put(i, new ArrayList<Integer>());
+                    for (int j = 0; j < sequence.size(); j++) {
+                        if (sequence.get(j).getAminoAcid() == sequence.get(i).getAminoAcid())
+                            potentialSwaps.get(i).add(j);
+                    }
+                }
+                int maxIndex = swapIndices.size() - 1;
+
+                while (true) {
+                    checkState(swapIndices.get(maxIndex) < potentialSwaps.get(maxIndex + firstCodon).size());
+                    for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
+                        int codonPosition = entry.getKey();
+                        int swapIndex = swapIndices.get(codonPosition - firstCodon);
+                        int swapPosition = entry.getValue().get(swapIndex);
+                        Codon temp = sequence.set(codonPosition, sequence.get(swapPosition));
+                        sequence.set(swapPosition, temp);
+                    }
+
+                    int newIndex = sequence.asBases().contains(restriction);
+                    if (newIndex == -1 || newIndex > index) break;
+
+                    for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
+                        int codonPosition = entry.getKey();
+                        int swapIndex = swapIndices.get(codonPosition - firstCodon);
+                        int swapPosition = entry.getValue().get(swapIndex);
+                        Codon temp = sequence.set(codonPosition, sequence.get(swapPosition));
+                        sequence.set(swapPosition, temp);
+                    }
+
+                    int swapIndexPos = 0;
+                    swapIndices.set(swapIndexPos, swapIndices.get(swapIndexPos) + 1);
+                    while (swapIndices.get(swapIndexPos) >= potentialSwaps.get(swapIndexPos + firstCodon).size()
+                            && swapIndexPos + 1 < swapIndices.size()) {
+                        swapIndices.set(swapIndexPos, 0);
+                        swapIndexPos++;
+                        swapIndices.set(swapIndexPos, swapIndices.get(swapIndexPos) + 1);
+                    }
+                }
+                index = sequence.asBases().contains(restriction);
+            }
+        }
+        protein.setSequence(sequence);
     }
 
     private Map<AminoAcid, Map<Codon, Double>> calcFrequencies() {
@@ -95,7 +155,7 @@ public class Library {
     //Set the codons of interest frequencies as desired for the design,
     //and fill in all other codons of the same acid based on their frequencies
     private void setBaseFrequencies(Protein protein, Map<Codon, Double> minFreq) {
-        List<Codon> sequence = Lists.newArrayList(protein.getSequence());
+        Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
         //For every codon of interest
         for (Map.Entry<Codon, Double> entry : minFreq.entrySet()) {
             Codon codonOfInterest = entry.getKey();
@@ -137,29 +197,32 @@ public class Library {
                     }
                 }
             }
-            //Shuffle the positions to fill them in in random order
-            Collections.shuffle(potentialCOIspots);
-            //Calculate the base integer number of occurrences that is closest to the base percentage
-            int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
-            //Trim the potential spots to only have as many spots as needed
-            //(necessary for filtering out the used positions from allCodonSpots later)
-            potentialCOIspots = potentialCOIspots.subList(0, baseOccurrences);
-            for (Integer potentialSpot : potentialCOIspots) {
-                sequence.set(potentialSpot, codonOfInterest);
-            }
-
-            //Fill in all the spots not used for the codon of interest based on their original frequencies
-            allCodonSpots.removeAll(potentialCOIspots);
-            Collections.shuffle(allCodonSpots);
-            Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
-                    allCodonSpots.size());
-            int index = 0;
-            for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
-                for (int j = 0; j < count.getValue(); j++) {
-                    sequence.set(allCodonSpots.get(index), count.getKey());
-                    index++;
+            do {
+                //Shuffle the positions to fill them in in random order
+                Collections.shuffle(potentialCOIspots);
+                //Calculate the base integer number of occurrences that is closest to the base percentage
+                int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
+                //Trim the potential spots to only have as many spots as needed
+                //(necessary for filtering out the used positions from allCodonSpots later)
+                List<Integer> trimmedCOIspots = potentialCOIspots.subList(0, baseOccurrences);
+                for (Integer potentialSpot : trimmedCOIspots) {
+                    sequence.set(potentialSpot, codonOfInterest);
                 }
-            }
+
+                //Fill in all the spots not used for the codon of interest based on their original frequencies
+                List<Integer> otherCodonSpots = new ArrayList<>(allCodonSpots);
+                otherCodonSpots.removeAll(trimmedCOIspots);
+                Collections.shuffle(otherCodonSpots);
+                Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
+                        otherCodonSpots.size());
+                int index = 0;
+                for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
+                    for (int j = 0; j < count.getValue(); j++) {
+                        sequence.set(otherCodonSpots.get(index), count.getKey());
+                        index++;
+                    }
+                }
+            } while (RestrictionHelper.containsRestrictionEnzyme(sequence, restrictions));
         }
         protein.setSequence(sequence);
     }
@@ -251,7 +314,8 @@ public class Library {
     }
 
     public FragmentIterator fragmentIterator() {
-        return new FragmentIterator(designs, oligos, protein, oligoLength, overlapLength, size, codonFrequencies);
+        return new FragmentIterator(designs, oligos, protein, oligoLength,
+                overlapLength, size, codonFrequencies, restrictions);
     }
 
     public void fillFragments() {
@@ -379,7 +443,11 @@ public class Library {
 
                 matches = matchesAnyVisited(overlap, visited);
 
-                if (matches) {
+                if (matches
+                        || (restrictions != null && !restrictions.isEmpty()
+                        && RestrictionHelper.containsRestrictionEnzyme(
+                        RestrictionHelper.buildPermutations(new Fragment.Range(0, size - 1),
+                                oligos, oligoLength, overlapLength), restrictions))) {
                     //Undo the swap if it is not unique (by swapping again with the same permutation indices)
                     doOverlapPermutation(overlap, permutations.get(pos), potentialSwaps.get(pos));
                 }

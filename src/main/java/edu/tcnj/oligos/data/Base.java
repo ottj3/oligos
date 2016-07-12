@@ -9,6 +9,7 @@ public enum Base {
     C,
     T,
     G,
+    Z,
 
     W(A, T),
     S(C, G),
@@ -37,6 +38,8 @@ public enum Base {
     public boolean matches(Base other) {
         if (this == other || this == N || other == N) {
             return true;
+        } else if (this == Z || other == Z) {
+            return false;
         } else if (this.included.contains(other) || other.included.contains(this)) {
             return true;
         }

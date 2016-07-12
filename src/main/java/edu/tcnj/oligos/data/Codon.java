@@ -4,6 +4,7 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -104,6 +105,7 @@ public enum Codon {
     private AminoAcid aa;
     private List<Base> baseSeq;
     private static Map<AminoAcid, List<Codon>> acidCodonMap = new HashMap<>();
+
     static {
         for (Codon c : Codon.values()) {
             if (c.bases.equals("???")) continue;
@@ -126,13 +128,21 @@ public enum Codon {
         this.aa = aa;
         if (isWildcard) {
             aa.setWildcard(this);
+        }
+        List<Base> baseList = new ArrayList<>();
+        if (isWildcard) {
+            if (this.aa == AminoAcid.PAD) {
+                baseList.addAll(Arrays.asList(Base.Z, Base.Z, Base.Z));
+            } else {
+                baseList.addAll(Arrays.asList(Base.N, Base.N, Base.N));
+            }
         } else {
-            List<Base> baseList = new ArrayList<>();
             for (char c : bases.toCharArray()) {
                 baseList.add(Base.valueOf(String.valueOf(c)));
             }
-            this.baseSeq = Collections.unmodifiableList(baseList);
         }
+        this.baseSeq = Collections.unmodifiableList(baseList);
+
     }
 
     public String getBases() {

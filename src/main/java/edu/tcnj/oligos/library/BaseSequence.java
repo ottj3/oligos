@@ -15,19 +15,20 @@ public class BaseSequence extends AbstractList<Base> {
         this.sequence = sequence;
     }
 
-    public boolean contains(BaseSequence other) {
+    public int contains(BaseSequence other) {
         for (int i = 0; i < this.sequence.size(); i++) {
             for (int j = 0; j < other.sequence.size(); j++) {
+                if (i + j >= this.sequence.size()) return -1;
                 if (this.get(i + j).matches(other.get(j))) {
                     if (j == other.sequence.size() - 1) {
-                        return true;
+                        return i;
                     }
                 } else {
                     break;
                 }
             }
         }
-        return false;
+        return -1;
     }
 
     //Operations on the underlying list
