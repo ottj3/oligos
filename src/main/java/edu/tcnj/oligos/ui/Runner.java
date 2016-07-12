@@ -7,6 +7,7 @@ import com.google.common.primitives.Ints;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.ext.PythonHandler;
+import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Design;
 import edu.tcnj.oligos.library.Library;
 import edu.tcnj.oligos.library.Oligo;
@@ -23,15 +24,17 @@ class Runner {
     private int offset;
     private int oligoSize;
     private int overlapSize;
-    private List<String> codons = new ArrayList<>();
-    private List<Double> mins = new ArrayList<>();
-    private List<Double> maxs = new ArrayList<>();
-    private List<Integer> numLevels = new ArrayList<>();
+    private List<String> codons;
+    private List<Double> mins;
+    private List<Double> maxs;
+    private List<Integer> numLevels;
+    private List<BaseSequence> restrictions;
     private String res;
     private Library lastLib;
 
     Runner(String seq, int start, int end, int offset, int oligoSize, int overlapSize,
-                  List<String> codons, List<Double> mins, List<Double> maxs, List<Integer> numLevels) {
+           List<String> codons, List<Double> mins, List<Double> maxs, List<Integer> numLevels,
+           List<BaseSequence> restrictions) {
         this.seq = seq;
         this.start = start;
         this.end = end == 0 ? seq.length() : end;
@@ -42,6 +45,7 @@ class Runner {
         this.mins = mins;
         this.maxs = maxs;
         this.numLevels = numLevels;
+        this.restrictions = restrictions;
     }
 
     void run() {
@@ -92,6 +96,7 @@ class Runner {
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)
                 .withMinFrequencies(baseFrequencyMap)
+                .withRestrictions(restrictions)
                 .build();
         this.lastLib = lib;
 

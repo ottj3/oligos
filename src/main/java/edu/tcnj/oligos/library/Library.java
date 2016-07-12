@@ -39,8 +39,11 @@ public class Library {
     private Map<Integer, List<Oligo>> oligos;
     private Map<Integer, List<Overlap>> overlaps;
 
+    private final List<BaseSequence> restrictions;
+
     private Library(Protein protein, int size, int oligoLength, int overlapLength, Map<Codon, Design> designs,
-                    EnumBiMap<AminoAcid, Codon> codonsOfInterest, Map<Codon, Double> minFreq) {
+                    EnumBiMap<AminoAcid, Codon> codonsOfInterest,
+                    Map<Codon, Double> minFreq, List<BaseSequence> restrictions) {
         this.protein = protein;
         this.size = size;
         this.oligoLength = oligoLength;
@@ -51,6 +54,8 @@ public class Library {
 
         this.codonFrequencies = calcFrequencies();
         setBaseFrequencies(this.protein, minFreq);
+
+        this.restrictions = restrictions;
     }
 
     private Map<AminoAcid, Map<Codon, Double>> calcFrequencies() {
@@ -518,8 +523,13 @@ public class Library {
     public Map<Integer, List<Oligo>> getOligos() {
         return oligos;
     }
+
     public Map<Codon, Design> getDesigns() {
         return designs;
+    }
+
+    public List<BaseSequence> getRestrictions() {
+        return restrictions;
     }
 
     public static class Builder {
@@ -531,6 +541,7 @@ public class Library {
         private Map<Codon, Design> designs;
         private EnumBiMap<AminoAcid, Codon> codonsOfInterest;
         private Map<Codon, Double> minFrequencies;
+        private List<BaseSequence> restrictions;
 
         public Builder withSequenceLength(int start, int end) {
             checkArgument(start < end,
@@ -576,6 +587,11 @@ public class Library {
             return this;
         }
 
+        public Builder withRestrictions(List<BaseSequence> restrictions) {
+            this.restrictions = restrictions;
+            return this;
+        }
+
         public Library build() {
             checkState(!proteinRNA.isEmpty());
             checkState(designs != null);
@@ -588,7 +604,8 @@ public class Library {
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
             int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
 
-            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest, minFrequencies);
+            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest,
+                    minFrequencies, restrictions);
         }
     }
 

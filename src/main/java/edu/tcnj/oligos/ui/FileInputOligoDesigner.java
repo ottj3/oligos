@@ -1,4 +1,4 @@
-package edu.tcnj.oligos;
+package edu.tcnj.oligos.ui;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class OligoDesigner {
+public class FileInputOligoDesigner {
     public static void main(String[] args) throws Exception {
         File file = new File("input.txt");
         FileInputStream fis = new FileInputStream(file);

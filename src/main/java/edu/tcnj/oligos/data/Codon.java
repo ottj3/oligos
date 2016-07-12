@@ -1,6 +1,10 @@
 package edu.tcnj.oligos.data;
 
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Lists;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -98,6 +102,7 @@ public enum Codon {
 
     private String bases;
     private AminoAcid aa;
+    private List<Base> baseSeq;
     private static Map<AminoAcid, List<Codon>> acidCodonMap = new HashMap<>();
     static {
         for (Codon c : Codon.values()) {
@@ -121,6 +126,12 @@ public enum Codon {
         this.aa = aa;
         if (isWildcard) {
             aa.setWildcard(this);
+        } else {
+            List<Base> baseList = new ArrayList<>();
+            for (char c : bases.toCharArray()) {
+                baseList.add(Base.valueOf(String.valueOf(c)));
+            }
+            this.baseSeq = Collections.unmodifiableList(baseList);
         }
     }
 
@@ -139,5 +150,9 @@ public enum Codon {
     @Override
     public String toString() {
         return bases.equals("???") ? aa.name() : getBases();
+    }
+
+    public List<Base> toBases() {
+        return baseSeq;
     }
 }

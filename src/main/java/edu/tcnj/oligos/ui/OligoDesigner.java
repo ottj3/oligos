@@ -1,11 +1,15 @@
 package edu.tcnj.oligos.ui;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
+import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Design;
 
 import javax.swing.*;
@@ -48,12 +52,17 @@ public class OligoDesigner {
     private JSpinner seqOffsetSpinner;
     private JButton remCodonButton;
     private JButton addCodonButton;
+    private JPanel extraOptionsPanel;
+    private JPanel restrictionSitesPanel;
+    private JCheckBox restrictionSitesCheckBox;
+    private JTextArea restrictionSitesText;
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("OligoDesigner");
         frame.setContentPane(new OligoDesigner().mainPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
+        frame.setSize(800, frame.getHeight());
         frame.setVisible(true);
     }
 
@@ -159,7 +168,7 @@ public class OligoDesigner {
                 int row = t.getSelectedRow();
                 do {
                     if (row == -1) row = 0;
-                    if (column == -1) column = 0;//ditto
+                    if (column == -1) column = 0;
                     else column++;
 
                     if (column == t.getColumnCount()) {
@@ -208,6 +217,18 @@ public class OligoDesigner {
             }
         });
 
+        restrictionSitesText.setEnabled(false);
+        restrictionSitesCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                AbstractButton abstractButton = (AbstractButton) actionEvent.getSource();
+                restrictionSitesText.setEnabled(abstractButton.getModel().isSelected());
+                if (restrictionSitesText.isEnabled()) {
+                    restrictionSitesText.requestFocusInWindow();
+                }
+            }
+        });
+
         calculateOligosButton.addActionListener(new ActionListener() {
             private int val(Object obj) {
                 return (Integer) obj;
@@ -237,6 +258,31 @@ public class OligoDesigner {
                 return levels;
             }
 
+            private List<BaseSequence> restrictionSites() {
+                String text = restrictionSitesText.getText();
+                if (!restrictionSitesCheckBox.getModel().isSelected() || Strings.isNullOrEmpty(text)) {
+                    return null;
+                }
+                String[] sites = text.split(",");
+                List<BaseSequence> restrictions = Lists.newArrayList();
+                for (String site : sites) {
+                    site = site.trim().toUpperCase();
+                    if (site.isEmpty()) continue;
+                    List<Base> restriction = Lists.newArrayList();
+                    for (char c : site.toCharArray()) {
+                        try {
+                            Base b = Base.valueOf(String.valueOf(c));
+                            restriction.add(b);
+                        } catch (IllegalArgumentException e) {
+                            throw new IllegalArgumentException("Unrecognized or unsupported base " + c
+                                    + " in restriction sites.", e);
+                        }
+                    }
+                    restrictions.add(new BaseSequence(restriction));
+                }
+                return restrictions;
+            }
+
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 try {
@@ -246,13 +292,19 @@ public class OligoDesigner {
                             val(seqOffsetSpinner.getValue()),
                             val(oligoLengthSpinner.getValue()),
                             val(overlapSizeSpinner.getValue()),
-                            codons(), freqs(1), freqs(2), levels()
+                            codons(), freqs(1), freqs(2), levels(),
+                            restrictionSites()
                     );
                     runner.run();
                     outputArea.setText("Design\n");
                     outputArea.append("Codon\tRange->Deltas...\n");
                     for (Map.Entry<Codon, Design> entry : runner.getLastLib().getDesigns().entrySet()) {
                         outputArea.append(entry.getKey() + "\t" + entry.getValue() + "\n");
+                    }
+                    List<BaseSequence> restrictions = runner.getLastLib().getRestrictions();
+                    if (restrictions != null && !restrictions.isEmpty()) {
+                        outputArea.append("\nRestriction Enzymes\n");
+                        outputArea.append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
                     }
                     outputArea.append("\nOligos\n");
                     outputArea.append(runner.getOligoOutput());
@@ -284,7 +336,7 @@ public class OligoDesigner {
         mainPanel = new JPanel();
         mainPanel.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
         final JPanel panel1 = new JPanel();
-        panel1.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        panel1.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
         mainPanel.add(panel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
@@ -366,6 +418,21 @@ public class OligoDesigner {
         codonsPanel.add(addCodonButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final Spacer spacer1 = new Spacer();
         codonsPanel.add(spacer1, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        extraOptionsPanel = new JPanel();
+        extraOptionsPanel.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
+        panel1.add(extraOptionsPanel, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        restrictionSitesPanel = new JPanel();
+        restrictionSitesPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        extraOptionsPanel.add(restrictionSitesPanel, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        restrictionSitesCheckBox = new JCheckBox();
+        this.$$$loadButtonText$$$(restrictionSitesCheckBox, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.enableRestrictions"));
+        restrictionSitesPanel.add(restrictionSitesCheckBox, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        restrictionSitesText = new JTextArea();
+        restrictionSitesText.setLineWrap(true);
+        restrictionSitesText.setWrapStyleWord(true);
+        restrictionSitesPanel.add(restrictionSitesText, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_WANT_GROW, null, new Dimension(150, 50), null, 0, false));
+        final Spacer spacer2 = new Spacer();
+        extraOptionsPanel.add(spacer2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JPanel panel6 = new JPanel();
         panel6.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
         mainPanel.add(panel6, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));

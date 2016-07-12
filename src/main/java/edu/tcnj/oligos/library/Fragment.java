@@ -254,7 +254,7 @@ public class Fragment extends Sequence {
             throw new UnsupportedOperationException();
         }
 
-        //Filter out the overall position->list<olgio> map to only oligos from
+        //Filter out the overall position->list<oligo> map to only oligos from
         //positions in the given range with the given codon->delta pairing
         private static Map<Integer, List<Oligo>> filter(Map<Integer, List<Oligo>> oligoMap,
                                                         Range range, Codon codon, int delta) {

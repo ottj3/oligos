@@ -1,16 +1,13 @@
 package edu.tcnj.oligos.library;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.base.Preconditions.checkElementIndex;
 
 /**
  * A list of codons, used to store RNA sequences.
@@ -81,6 +78,14 @@ public class Sequence extends AbstractList<Codon> {
 
     public List<Codon> getSequence() {
         return sequence;
+    }
+
+    public BaseSequence asBases() {
+        List<Base> bases = Lists.newArrayList();
+        for (Codon codon : sequence) {
+            bases.addAll(codon.toBases());
+        }
+        return new BaseSequence(bases);
     }
 
     /**
