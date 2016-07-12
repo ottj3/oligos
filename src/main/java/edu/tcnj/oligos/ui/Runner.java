@@ -28,7 +28,6 @@ class Runner {
     private List<Double> maxs;
     private List<Integer> numLevels;
     private List<BaseSequence> restrictions;
-    private String res;
     private Library lastLib;
 
     Runner(String seq, int start, int end, int offset, int oligoSize, int overlapSize,
@@ -106,25 +105,6 @@ class Runner {
         lib.createOverlaps();
         lib.makeOverlapsUnique();
 
-        // print output oligos
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<Integer, List<Oligo>> entry : lib.getOligos().entrySet()) {
-            for (Oligo oligo : entry.getValue()) {
-                StringBuilder oligoStr = new StringBuilder();
-                for (Codon c : oligo.getSequence()) {
-                    oligoStr.append(c.getBases());
-                }
-                sb.append(entry.getKey())
-                        .append(" ")
-                        .append(oligoStr.toString())
-                        .append("\n");
-            }
-        }
-        res = sb.toString();
-    }
-
-    public String getOligoOutput() {
-        return res;
     }
 
     public Library getLastLib() {
