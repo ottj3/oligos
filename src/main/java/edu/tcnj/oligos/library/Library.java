@@ -1,6 +1,7 @@
 package edu.tcnj.oligos.library;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.EnumBiMap;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
@@ -200,14 +201,17 @@ public class Library {
                     }
                 }
             }
+
+            //Shuffle the positions to fill them in in random order
+            Collections.shuffle(potentialCOIspots);
+            //Use an iterator to permute all possible orders
+            Iterator<List<Integer>> perm = Collections2.permutations(potentialCOIspots).iterator();
             do {
-                //Shuffle the positions to fill them in in random order
-                Collections.shuffle(potentialCOIspots);
                 //Calculate the base integer number of occurrences that is closest to the base percentage
                 int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
                 //Trim the potential spots to only have as many spots as needed
                 //(necessary for filtering out the used positions from allCodonSpots later)
-                List<Integer> trimmedCOIspots = potentialCOIspots.subList(0, baseOccurrences);
+                List<Integer> trimmedCOIspots = perm.next().subList(0, baseOccurrences);
                 for (Integer potentialSpot : trimmedCOIspots) {
                     sequence.set(potentialSpot, codonOfInterest);
                 }
@@ -215,16 +219,29 @@ public class Library {
                 //Fill in all the spots not used for the codon of interest based on their original frequencies
                 List<Integer> otherCodonSpots = new ArrayList<>(allCodonSpots);
                 otherCodonSpots.removeAll(trimmedCOIspots);
-                Collections.shuffle(otherCodonSpots);
+                //As a baseline, fill other positions with PAD to see if this COI permutation causes restriction sites
+                for (Integer index : otherCodonSpots) {
+                    sequence.set(index, Codon.PAD);
+                }
+                //If the COI permutation causes restriction sites to appear, skip to the next COI perm
+                if (RestrictionHelper.containsRestrictionEnzyme(sequence, restrictions)) continue;
+
                 Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
                         otherCodonSpots.size());
-                int index = 0;
-                for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
-                    for (int j = 0; j < count.getValue(); j++) {
-                        sequence.set(otherCodonSpots.get(index), count.getKey());
-                        index++;
+
+                Collections.shuffle(otherCodonSpots);
+                Iterator<List<Integer>> innerPerm = Collections2.permutations(otherCodonSpots).iterator();
+
+                do {
+                    List<Integer> permutedCodonSpots = innerPerm.next();
+                    int index = 0;
+                    for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
+                        for (int j = 0; j < count.getValue(); j++) {
+                            sequence.set(permutedCodonSpots.get(index), count.getKey());
+                            index++;
+                        }
                     }
-                }
+                } while (RestrictionHelper.containsRestrictionEnzyme(sequence, restrictions));
             } while (RestrictionHelper.containsRestrictionEnzyme(sequence, restrictions));
         }
         protein.setSequence(sequence);
@@ -665,10 +682,26 @@ public class Library {
         private Map<Integer, Integer> swapIndices;
         private int baseValue;
 
+        /**
+         * Construct a SwapIterator for the given map of potentialSwaps,
+         * using a base value of -1 (indicating a do-nothing state)
+         *
+         * @param potentialSwaps a map from an int (position) to a list of ints
+         *                       (positions of codons with the same acid)
+         */
         public SwapIterator(Map<Integer, List<Integer>> potentialSwaps) {
             this(potentialSwaps, -1);
         }
 
+        /**
+         * Construct a SwapIterator for the given map of PotentialSwaps and given baseValue
+         *
+         * @param potentialSwaps a map from an int (position) to a list of ints
+         *                       (positions of codons with the same acid)
+         * @param baseValue      the starting value for each iterator. Values &lt; 0 mean do nothing
+         *                       (more negative means more do nothing states),
+         *                       other values mean skip indices less than baseValue
+         */
         public SwapIterator(Map<Integer, List<Integer>> potentialSwaps, int baseValue) {
             this.potentialSwaps = potentialSwaps;
             this.baseValue = baseValue;
@@ -676,32 +709,51 @@ public class Library {
         }
 
         private void initializeIndices() {
+            //Set the indices to baseValue for every position
             swapIndices = new HashMap<>();
             for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
                 swapIndices.put(entry.getKey(), baseValue);
             }
         }
 
+        /**
+         * Get the current value without advancing the list
+         *
+         * @return A map from int (position) to int (a possible swap position)
+         */
         public Map<Integer, Integer> peek() {
             if (!this.hasNext()) throw new NoSuchElementException("Out of potential swaps.");
             Map<Integer, Integer> currentSwap = new HashMap<>();
+            //For every position
             for (Map.Entry<Integer, Integer> entry : swapIndices.entrySet()) {
-                if (entry.getValue() == -1) {
-                    currentSwap.put(entry.getKey(), -1);
+                //If the value is negative (a do-nothing state) put that value in the map
+                if (entry.getValue() <= -1) {
+                    currentSwap.put(entry.getKey(), entry.getValue());
                 } else {
+                    //Otherwise, get the potentialSwap that this entry's indices refer to, and put it in the map
                     currentSwap.put(entry.getKey(), potentialSwaps.get(entry.getKey()).get(entry.getValue()));
                 }
             }
             return currentSwap;
         }
 
+        /**
+         * Get the current value and advance to the next permutation
+         *
+         * @return A map from int (position) to int (a possible swap position)
+         */
         public Map<Integer, Integer> next() {
+            //Get the current element to return it
             Map<Integer, Integer> nextVal = this.peek();
+            //Step to the next permutation
             Iterator<Map.Entry<Integer, Integer>> it = swapIndices.entrySet().iterator();
             Map.Entry<Integer, Integer> next = it.next();
             int key = next.getKey();
             int value = next.getValue();
             swapIndices.put(key, value + 1);
+            //If the current index overflows, reset it to baseValue and try incrementing the next index instead
+            //(Essentially counting with the least significant bits on the left)
+            //If the last index overflows, there are no permutations left so hasNext will later return false
             while (swapIndices.get(key) >= potentialSwaps.get(key).size()
                     && it.hasNext()) {
                 swapIndices.put(key, baseValue);
@@ -713,6 +765,11 @@ public class Library {
             return nextVal;
         }
 
+        /**
+         * Determine whether the iterator has run out of permutations
+         *
+         * @return true if there are still possible permutations, false otherwise
+         */
         public boolean hasNext() {
             for (Map.Entry<Integer, Integer> entry : swapIndices.entrySet()) {
                 if (entry.getValue() >= potentialSwaps.get(entry.getKey()).size()) return false;

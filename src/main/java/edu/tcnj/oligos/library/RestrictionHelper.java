@@ -5,6 +5,13 @@ import java.util.List;
 import java.util.Map;
 
 public class RestrictionHelper {
+    /**
+     * Determine whether any baseSequence in the list contains a restriction enzyme site
+     *
+     * @param possiblePermutations a list of BaseSequences to check
+     * @param restrictions         a list of BaseSequences to be avoided
+     * @return true iff any one of the restrictions appears in any of the possiblePermutations
+     */
     public static boolean containsRestrictionEnzyme(List<BaseSequence> possiblePermutations, List<BaseSequence> restrictions) {
         if (restrictions == null || restrictions.isEmpty()) return false;
         for (BaseSequence possiblePermutation : possiblePermutations) {
@@ -18,6 +25,13 @@ public class RestrictionHelper {
         return false;
     }
 
+    /**
+     * Determine whether this sequence contains a restriction enzyme site
+     *
+     * @param sequence     the sequence to check
+     * @param restrictions a list of BaseSequences to be avoided
+     * @return true iff the sequence contains any of the restrictions
+     */
     public static boolean containsRestrictionEnzyme(Sequence sequence, List<BaseSequence> restrictions) {
         if (restrictions == null || restrictions.isEmpty()) return false;
         for (BaseSequence restriction : restrictions) {
@@ -26,34 +40,51 @@ public class RestrictionHelper {
         return false;
     }
 
+    /**
+     * Build all possible permutations of oligos in a given range
+     *
+     * @param range         the range of oligo positions to be permuted (inclusive)
+     * @param oligos        the oligos to be permuted
+     * @param oligoLength   the length of an oligo
+     * @param overlapLength the length of an overlap
+     * @return a list of all possible BaseSequences made from these oligos
+     */
     public static List<BaseSequence> buildPermutations(Fragment.Range range, Map<Integer, List<Oligo>> oligos,
                                                        int oligoLength, int overlapLength) {
         return buildPermutationsRecursive(range.getStartPosition(), range, oligos, oligoLength, overlapLength);
     }
 
+    //Recursively build all permutations
     private static List<BaseSequence> buildPermutationsRecursive(int position, Fragment.Range range,
-                                 Map<Integer, List<Oligo>> oligos, int oligoLength, int overlapLength) {
+                                                                 Map<Integer, List<Oligo>> oligos, int oligoLength, int overlapLength) {
         List<BaseSequence> finalPermutations = new ArrayList<>();
+        //Base case: for the last position, just return a list of the oligos as BaseSequences
         if (position == range.getEndPosition()) {
             for (Oligo oligo : oligos.get(position)) {
                 finalPermutations.add(oligo.asBases());
             }
-        } else {
-            List<BaseSequence> partialPermutations = buildPermutationsRecursive(position + 1, range, oligos,
-                    oligoLength, overlapLength);
-            for (Oligo oligo : oligos.get(position)) {
-                //TODO check off-by-one potential in overlap and beginningOverlap
-                BaseSequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength).asBases();
-                for (BaseSequence partialPermutation : partialPermutations) {
-//                    BaseSequence beginningOverlap = partialPermutation.subList(0, (overlapLength * 3));
-                    if (partialPermutation.indexOf(overlap) == 0) {
-                        BaseSequence fullSequence = oligo.asBases();
-                        fullSequence.addAll(partialPermutation.subList(overlapLength * 3, partialPermutation.size()));
-                        finalPermutations.add(fullSequence);
-                    }
+            return finalPermutations;
+        }
+        //Recurse: find all possible sequences made of all oligos in later positions than this current one
+        List<BaseSequence> partialPermutations = buildPermutationsRecursive(position + 1, range, oligos,
+                oligoLength, overlapLength);
+        //For every oligo in this position
+        for (Oligo oligo : oligos.get(position)) {
+            //Get the ending overlap base sequence for this oligo
+            //TODO check off-by-one potential in overlap and beginningOverlap
+            BaseSequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength).asBases();
+            for (BaseSequence partialPermutation : partialPermutations) {
+                //If any of the permutations start with this overlap, that means that this oligo can connect to it
+                if (partialPermutation.indexOf(overlap) == 0) {
+                    //Make the sequence produced by putting this oligo in
+                    //front of the permutation, add it to fullSequences
+                    BaseSequence fullSequence = oligo.asBases();
+                    fullSequence.addAll(partialPermutation.subList(overlapLength * 3, partialPermutation.size()));
+                    finalPermutations.add(fullSequence);
                 }
             }
         }
+
         return finalPermutations;
     }
 }

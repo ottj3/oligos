@@ -1,6 +1,7 @@
 package edu.tcnj.oligos.library;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import edu.tcnj.oligos.data.AminoAcid;
@@ -91,8 +92,13 @@ public class Fragment extends Sequence {
             }
         }
         Map<Codon, Integer> counts = Library.findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
+        Collections.shuffle(positionsOfInterest);
+        Iterator<List<Integer>> perm = Collections2.permutations(positionsOfInterest).iterator();
         do {
-            Collections.shuffle(positionsOfInterest);
+            //Permute the positions and fill them; if this happened to
+            //make any restriction enzyme sites try a different permutation
+            //TODO check hasNext() to throw a more specific exception?
+            positionsOfInterest = perm.next();
             for (int i = 0; i < delta; i++) {
                 set(positionsOfInterest.get(i), codon);
             }
@@ -104,7 +110,8 @@ public class Fragment extends Sequence {
                 }
             }
         }
-        while (RestrictionHelper.containsRestrictionEnzyme(RestrictionHelper.buildPermutations(range, oligos, oligoLength, overlapLength), restrictions));
+        while (RestrictionHelper.containsRestrictionEnzyme(
+                RestrictionHelper.buildPermutations(range, oligos, oligoLength, overlapLength), restrictions));
     }
 
     /**
