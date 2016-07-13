@@ -211,6 +211,7 @@ public class Library {
             //Use an iterator to permute all possible orders
             Iterator<List<Integer>> perm = Collections2.permutations(potentialCOIspots).iterator();
             do {
+                checkInterrupt();
                 //Calculate the base integer number of occurrences that is closest to the base percentage
                 int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
                 //Trim the potential spots to only have as many spots as needed
@@ -303,6 +304,7 @@ public class Library {
     }
 
     private void createOligosForPosition(int pos) {
+        checkInterrupt();
         //for a given position (oligo # in overall sequence), create as many oligos as necessary to make the design
         checkArgument(0 <= pos && pos < size);
         List<Map<Codon, Integer>> oligos = Lists.newArrayList();
@@ -784,6 +786,13 @@ public class Library {
                 if (entry.getValue() >= potentialSwaps.get(entry.getKey()).size()) return false;
             }
             return true;
+        }
+    }
+
+    static void checkInterrupt() {
+        if (Thread.currentThread().isInterrupted()) {
+            Exception e = new InterruptedException("Execution was cancelled.");
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 }

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static edu.tcnj.oligos.library.Library.checkInterrupt;
+
 public class RestrictionHelper {
     /**
      * Determine whether any baseSequence in the list contains a restriction enzyme site
@@ -57,6 +59,7 @@ public class RestrictionHelper {
     //Recursively build all permutations
     private static List<BaseSequence> buildPermutationsRecursive(int position, Fragment.Range range,
                                                                  Map<Integer, List<Oligo>> oligos, int oligoLength, int overlapLength) {
+        checkInterrupt();
         List<BaseSequence> finalPermutations = new ArrayList<>();
         //Base case: for the last position, just return a list of the oligos as BaseSequences
         if (position == range.getEndPosition()) {

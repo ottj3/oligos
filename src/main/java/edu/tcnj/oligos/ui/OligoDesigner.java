@@ -12,11 +12,14 @@ import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Design;
 import edu.tcnj.oligos.library.Oligo;
+import edu.tcnj.oligos.library.OutOfSwapsException;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -32,6 +35,7 @@ import java.util.regex.Pattern;
 public class OligoDesigner {
     private ResourceBundle res = ResourceBundle.getBundle("edu.tcnj.oligos.ui.oligoDesigner");
     private static final Pattern rnaPattern = Pattern.compile("^[ACTG]*");
+    private SwingWorker runnerThread = null;
 
     private JTextField rnaInputField;
     private JSpinner oligoLengthSpinner;
@@ -64,6 +68,7 @@ public class OligoDesigner {
     private JTextArea outputOligoInfo;
     private JList geneList;
     private JTextArea outputGeneInfo;
+    private JButton cancelCalculateButton;
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Oligo Designer");
@@ -199,6 +204,7 @@ public class OligoDesigner {
 //            public boolean verify(JComponent jComponent) {
 //                JTextField field = ((JTextField) jComponent);
 //                String text = field.getText();
+//                    // unfinished
 //            }
 //        };
 //        codonTable.getColumn("Min Freq").setCellEditor(new DefaultCellEditor(new JTextField()) {
@@ -239,11 +245,14 @@ public class OligoDesigner {
 
         OligoListModel oligoListModel = new OligoListModel();
         outputOligoList.setModel(oligoListModel);
+        outputOligoList.setTransferHandler(new OligoListTransferHandler());
+
         outputOligoList.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 int index = outputOligoList.locationToIndex(e.getPoint());
+                if (index == -1) return;
                 Oligo oligo = ((OligoListModel) outputOligoList.getModel()).getActualAt(index);
                 outputOligoInfo.setText("Sequence: ");
                 outputOligoInfo.append(oligo.toString() + "\n\n");
@@ -269,6 +278,13 @@ public class OligoDesigner {
             }
         });
 
+        cancelCalculateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                runnerThread.cancel(true);
+                runnerThread = null;
+            }
+        });
         calculateOligosButton.addActionListener(new ActionListener() {
             private int val(Object obj) {
                 return (Integer) obj;
@@ -325,36 +341,79 @@ public class OligoDesigner {
 
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
-                try {
-                    final Runner runner = new Runner(rnaInputField.getText(),
-                            val(seqStartSpinner.getValue()),
-                            val(seqEndSpinner.getValue()),
-                            val(seqOffsetSpinner.getValue()),
-                            val(oligoLengthSpinner.getValue()),
-                            val(overlapSizeSpinner.getValue()),
-                            codons(), freqs(1), freqs(2), levels(),
-                            restrictionSites()
-                    );
-                    runner.run();
-                    outputInfoArea.setText("Design\n");
-                    outputInfoArea.append("Codon\tRange->Deltas...\n");
-                    for (Map.Entry<Codon, Design> entry : runner.getLastLib().getDesigns().entrySet()) {
-                        outputInfoArea.append(entry.getKey() + "\t" + entry.getValue() + "\n");
+                calculateOligosButton.setEnabled(false);
+                calculateOligosButton.setVisible(false);
+                final Runner runner = new Runner(rnaInputField.getText(),
+                        val(seqStartSpinner.getValue()),
+                        val(seqEndSpinner.getValue()),
+                        val(seqOffsetSpinner.getValue()),
+                        val(oligoLengthSpinner.getValue()),
+                        val(overlapSizeSpinner.getValue()),
+                        codons(), freqs(1), freqs(2), levels(),
+                        restrictionSites()
+                );
+                final Runnable run = new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            runner.run();
+                        } catch (Exception ex) {
+                            handleException(ex);
+                            return;
+                        }
+                        SwingUtilities.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                outputInfoArea.setText("Design\n");
+                                outputInfoArea.append("Codon\tRange->Deltas...\n");
+                                for (Map.Entry<Codon, Design> entry : runner.getLastLib().getDesigns().entrySet()) {
+                                    outputInfoArea.append(entry.getKey() + "\t" + entry.getValue() + "\n");
+                                }
+                                List<BaseSequence> restrictions = runner.getLastLib().getRestrictions();
+                                if (restrictions != null && !restrictions.isEmpty()) {
+                                    outputInfoArea.append("\nRestriction Enzymes\n");
+                                    outputInfoArea.append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
+                                }
+                                ((OligoListModel) outputOligoList.getModel()).setOligos(runner.getLastLib().getOligos());
+                                cancelCalculateButton.setVisible(false);
+                                cancelCalculateButton.setEnabled(false);
+                                calculateOligosButton.setVisible(true);
+                                calculateOligosButton.setEnabled(true);
+                            }
+                        });
                     }
-                    List<BaseSequence> restrictions = runner.getLastLib().getRestrictions();
-                    if (restrictions != null && !restrictions.isEmpty()) {
-                        outputInfoArea.append("\nRestriction Enzymes\n");
-                        outputInfoArea.append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
+                };
+                runnerThread = new SwingWorker<Void, Void>() {
+                    @Override
+                    protected Void doInBackground() {
+                        run.run();
+                        return null;
                     }
-                    ((OligoListModel) outputOligoList.getModel()).setOligos(runner.getLastLib().getOligos());
-                } catch (Exception ex) {
-                    outputInfoArea.setText("There was an error running the program.\n"
-                            + (ex.getMessage() == null ? "" : ex.getMessage() + "\n")
-                            + "Please see console for details.");
-                    ex.printStackTrace();
-                }
+                };
+                runnerThread.execute();
+
+                cancelCalculateButton.setVisible(true);
+                cancelCalculateButton.setEnabled(true);
             }
         });
+    }
+
+    private void handleException(Exception ex) {
+        if (ex instanceof RuntimeException) {
+            if (ex.getCause() instanceof InterruptedException) {
+                outputInfoArea.setText(res.getString("exception.interrupt"));
+            } else if (ex.getCause() instanceof OutOfSwapsException) {
+                outputInfoArea.setText(res.getString("exception.noSwaps").replaceAll("\\\\n", "\n"));
+            }
+        } else {
+            outputInfoArea.setText(res.getString("exception.generic")
+                    + (ex.getMessage() == null ? "." : ":\n" + ex.getMessage()));
+        }
+        cancelCalculateButton.setVisible(false);
+        cancelCalculateButton.setEnabled(false);
+        calculateOligosButton.setVisible(true);
+        calculateOligosButton.setEnabled(true);
+        ex.printStackTrace();
     }
 
     {
@@ -475,12 +534,12 @@ public class OligoDesigner {
         final Spacer spacer2 = new Spacer();
         extraOptionsPanel.add(spacer2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JPanel panel6 = new JPanel();
-        panel6.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        panel6.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
         splitPane1.setRightComponent(panel6);
         final JSplitPane splitPane2 = new JSplitPane();
         splitPane2.setDividerLocation(200);
         splitPane2.setOrientation(0);
-        panel6.add(splitPane2, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
+        panel6.add(splitPane2, new GridConstraints(0, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
         final JScrollPane scrollPane2 = new JScrollPane();
         splitPane2.setLeftComponent(scrollPane2);
         outputInfoArea = new JTextArea();
@@ -529,6 +588,11 @@ public class OligoDesigner {
         calculateOligosButton = new JButton();
         this.$$$loadButtonText$$$(calculateOligosButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.calculate"));
         panel6.add(calculateOligosButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        cancelCalculateButton = new JButton();
+        cancelCalculateButton.setEnabled(false);
+        this.$$$loadButtonText$$$(cancelCalculateButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.cancelCalc"));
+        cancelCalculateButton.setVisible(false);
+        panel6.add(cancelCalculateButton, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
@@ -600,14 +664,16 @@ public class OligoDesigner {
         }
 
         void setOligos(Map<Integer, List<Oligo>> oligos) {
+            super.removeAllElements();
             this.oligos = oligos;
             for (Map.Entry<Integer, List<Oligo>> entry : oligos.entrySet()) {
+                char var = 'a';
                 for (Oligo oligo : entry.getValue()) {
                     List<String> deltaList = Lists.newArrayList();
                     for (Map.Entry<Codon, Integer> deltas : oligo.getDeltas().entrySet()) {
                         deltaList.add(deltas.getKey() + " (" + deltas.getKey().getAminoAcid() + "): " + deltas.getValue());
                     }
-                    super.addElement(entry.getKey() + " [" + Joiner.on(", ").join(deltaList) + "]");
+                    super.addElement(entry.getKey() + " (" + var++ + "): [" + Joiner.on(", ").join(deltaList) + "]");
                 }
             }
         }
@@ -624,4 +690,22 @@ public class OligoDesigner {
         }
     }
 
+    private class OligoListTransferHandler extends TransferHandler {
+        protected Transferable createTransferable(JComponent c) {
+            JList list = (JList) c;
+            int[] indices = list.getSelectedIndices();
+            List<String> seqs = Lists.newArrayListWithCapacity(indices.length);
+            for (int index : indices) {
+                Oligo listElem = ((OligoListModel) list.getModel()).getActualAt(index);
+                seqs.add(listElem.toString());
+            }
+            String value = Joiner.on("\n").join(seqs);
+            return new StringSelection(value);
+        }
+
+        @Override
+        public int getSourceActions(JComponent c) {
+            return TransferHandler.COPY;
+        }
+    }
 }
