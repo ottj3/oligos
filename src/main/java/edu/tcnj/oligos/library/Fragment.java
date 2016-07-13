@@ -113,8 +113,8 @@ public class Fragment extends Sequence {
                 }
             }
         }
-        while (RestrictionHelper.containsRestrictionEnzyme(
-                RestrictionHelper.buildPermutations(range, oligos, oligoLength, overlapLength), restrictions));
+        while (LibraryUtils.containsRestrictionEnzyme(
+                LibraryUtils.buildPermutations(range, oligos, oligoLength, overlapLength), restrictions));
     }
 
     @Override

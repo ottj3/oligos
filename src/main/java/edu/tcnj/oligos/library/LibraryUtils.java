@@ -6,7 +6,7 @@ import java.util.Map;
 
 import static edu.tcnj.oligos.library.Library.checkInterrupt;
 
-public class RestrictionHelper {
+public class LibraryUtils {
     /**
      * Determine whether any Sequence in the list contains a restriction enzyme site
      *
@@ -14,7 +14,8 @@ public class RestrictionHelper {
      * @param restrictions         a list of BaseSequences to be avoided
      * @return true iff any one of the restrictions appears in any of the possiblePermutations
      */
-    public static boolean containsRestrictionEnzyme(List<Sequence> possiblePermutations, List<BaseSequence> restrictions) {
+    static boolean containsRestrictionEnzyme(List<Sequence> possiblePermutations,
+                                                    List<BaseSequence> restrictions) {
         if (restrictions == null || restrictions.isEmpty()) return false;
         for (Sequence possiblePermutation : possiblePermutations) {
             BaseSequence baseSequence = possiblePermutation.asBases();
@@ -34,7 +35,7 @@ public class RestrictionHelper {
      * @param restrictions a list of BaseSequences to be avoided
      * @return true iff the sequence contains any of the restrictions
      */
-    public static boolean containsRestrictionEnzyme(Sequence sequence, List<BaseSequence> restrictions) {
+    static boolean containsRestrictionEnzyme(Sequence sequence, List<BaseSequence> restrictions) {
         if (restrictions == null || restrictions.isEmpty()) return false;
         for (BaseSequence restriction : restrictions) {
             if (sequence.asBases().indexOf(restriction) != -1) return true;
@@ -52,13 +53,13 @@ public class RestrictionHelper {
      * @return a list of all possible BaseSequences made from these oligos
      */
     public static List<Sequence> buildPermutations(Fragment.Range range, Map<Integer, List<Oligo>> oligos,
-                                                       int oligoLength, int overlapLength) {
+                                                   int oligoLength, int overlapLength) {
         return buildPermutationsRecursive(range.getStartPosition(), range, oligos, oligoLength, overlapLength);
     }
 
     //Recursively build all permutations
     private static List<Sequence> buildPermutationsRecursive(int position, Fragment.Range range,
-                                                                 Map<Integer, List<Oligo>> oligos, int oligoLength, int overlapLength) {
+                                                             Map<Integer, List<Oligo>> oligos, int oligoLength, int overlapLength) {
         checkInterrupt();
         //Base case: for the last position, just return a list of the oligos as BaseSequences
         List<Sequence> finalPermutations = new ArrayList<>();
@@ -72,11 +73,10 @@ public class RestrictionHelper {
         //For every oligo in this position
         for (Oligo oligo : oligos.get(position)) {
             //Get the ending overlap base sequence for this oligo
-            //TODO check off-by-one potential in overlap and beginningOverlap
-            Sequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength);
+            BaseSequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength).asBases();
             for (Sequence partialPermutation : partialPermutations) {
                 //If any of the permutations start with this overlap, that means that this oligo can connect to it
-                if (partialPermutation.indexOf(overlap) == 0) {
+                if (partialPermutation.asBases().indexOf(overlap) == 0) {
                     //Make the sequence produced by putting this oligo in
                     //front of the permutation, add it to fullSequences
                     Sequence fullSequence = new Sequence(new ArrayList<>(oligo));
