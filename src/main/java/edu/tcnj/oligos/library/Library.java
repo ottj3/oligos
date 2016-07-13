@@ -68,7 +68,8 @@ public class Library {
         //Make a new sequence from the protein's codon sequence (as the protein's sequence is immutable)
         Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
         //For every restriction: find all occurrences, remove them
-        for (BaseSequence restriction : restrictions) {
+        for (int i = 0; i < restrictions.size(); i++) {
+            BaseSequence restriction = restrictions.get(i);
             int index = sequence.asBases().indexOf(restriction);
             //While there are still occurrences of the restriction enzyme; each run through
             //the outer while loop deals with one given site at which the enzyme occurs
@@ -81,13 +82,13 @@ public class Library {
                 Map<Integer, List<Integer>> potentialSwaps = new HashMap<>();
 
                 //For every codon in this range
-                for (int i = firstCodon; i <= lastCodon; i++) {
-                    potentialSwaps.put(i, new ArrayList<Integer>());
+                for (int j = firstCodon; j <= lastCodon; j++) {
+                    potentialSwaps.put(j, new ArrayList<Integer>());
                     //Go through the sequence, note the positions of any codon
                     //that shares an amino acid with the current codon
-                    for (int j = 0; j < sequence.size(); j++) {
-                        if (i != j && sequence.get(j).getAminoAcid() == sequence.get(i).getAminoAcid())
-                            potentialSwaps.get(i).add(j);
+                    for (int k = 0; k < sequence.size(); k++) {
+                        if (j != k && sequence.get(k).getAminoAcid() == sequence.get(j).getAminoAcid())
+                            potentialSwaps.get(j).add(k);
                     }
                 }
                 SwapIterator swapIt = new SwapIterator(potentialSwaps);
@@ -106,8 +107,19 @@ public class Library {
                     }
 
                     //If this swap either removed the restriction or pushed it further back in the sequence, move on
-                    int newIndex = sequence.asBases().indexOf(restriction);
-                    if (newIndex == -1 || newIndex > index) break;
+                    boolean createdOther = false;
+                    BaseSequence baseSequence = sequence.asBases();
+                    for (int j = 0; j < i; j++) {
+                        if (baseSequence.indexOf(restrictions.get(j)) != -1) {
+                            createdOther = true;
+                            break;
+                        }
+                    }
+
+                    if (!createdOther) {
+                        int newIndex = baseSequence.indexOf(restriction);
+                        if (newIndex == -1 || newIndex > index) break;
+                    }
 
                     //Otherwise, undo this swap to try the next one
                     for (Map.Entry<Integer, Integer> entry : thisSwap.entrySet()) {
@@ -234,19 +246,21 @@ public class Library {
 
                 Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
                         otherCodonSpots.size());
+                List<Codon> codons = new ArrayList<>();
+                for (Map.Entry<Codon, Integer> codonEntry : counts.entrySet()) {
+                    for (Integer i = 0; i < codonEntry.getValue(); i++) {
+                        codons.add(codonEntry.getKey());
+                    }
+                }
 
-                Collections.shuffle(otherCodonSpots);
-                Iterator<List<Integer>> innerPerm = Collections2.permutations(otherCodonSpots).iterator();
+                Iterator<List<Codon>> innerPerm = Collections2.orderedPermutations(codons).iterator();
 
                 do {
+                    checkInterrupt();
                     if (!innerPerm.hasNext()) break;
-                    List<Integer> permutedCodonSpots = innerPerm.next();
-                    int index = 0;
-                    for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
-                        for (int j = 0; j < count.getValue(); j++) {
-                            sequence.set(permutedCodonSpots.get(index), count.getKey());
-                            index++;
-                        }
+                    List<Codon> permutedCodons = innerPerm.next();
+                    for (int i = 0; i < otherCodonSpots.size(); i++) {
+                        sequence.set(otherCodonSpots.get(i), permutedCodons.get(i));
                     }
                 } while (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
             } while (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
