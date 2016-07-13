@@ -254,6 +254,7 @@ public class Library {
                 }
 
                 Iterator<List<Codon>> innerPerm = Collections2.orderedPermutations(codons).iterator();
+                Collections.shuffle(otherCodonSpots);
 
                 do {
                     LibraryUtils.checkInterrupt();
