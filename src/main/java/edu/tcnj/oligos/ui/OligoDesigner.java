@@ -7,10 +7,12 @@ import com.google.common.primitives.Ints;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Design;
+import edu.tcnj.oligos.library.Gene;
 import edu.tcnj.oligos.library.Oligo;
 import edu.tcnj.oligos.library.OutOfSwapsException;
 
@@ -18,8 +20,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -66,7 +66,7 @@ public class OligoDesigner {
     private JTabbedPane outputTabs;
     private JList outputOligoList;
     private JTextArea outputOligoInfo;
-    private JList geneList;
+    private JList outputGeneList;
     private JTextArea outputGeneInfo;
     private JButton cancelCalculateButton;
 
@@ -75,7 +75,7 @@ public class OligoDesigner {
         frame.setContentPane(new OligoDesigner().mainPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
-        frame.setSize(1000, 600);
+        frame.setSize(1200, 600);
         frame.setVisible(true);
     }
 
@@ -243,9 +243,11 @@ public class OligoDesigner {
             }
         });
 
-        OligoListModel oligoListModel = new OligoListModel();
-        outputOligoList.setModel(oligoListModel);
-        outputOligoList.setTransferHandler(new OligoListTransferHandler());
+        outputOligoList.setModel(new OligoListModel());
+        outputOligoList.setTransferHandler(new SequenceListTransferHandler());
+
+        outputGeneList.setModel(new GeneListModel());
+        outputGeneList.setTransferHandler(new SequenceListTransferHandler());
 
         outputOligoList.addMouseListener(new MouseAdapter() {
             @Override
@@ -266,7 +268,28 @@ public class OligoDesigner {
                 outputOligoInfo.append(deltas);
             }
         });
-        outputOligoList.setCellRenderer(new DefaultListCellRenderer() {
+        outputGeneList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                int index = outputGeneList.locationToIndex(e.getPoint());
+                if (index == -1) return;
+                Gene gene = ((GeneListModel) outputGeneList.getModel()).getActualAt(index);
+                outputGeneInfo.setText("Sequence: ");
+                outputGeneInfo.append(gene.toString() + "\n\n");
+                String deltas = "Codon Frequencies\n\n";
+                for (Map.Entry<AminoAcid, Map<Codon, Double>> acidEntry : gene.getFreqs().entrySet()) {
+                    deltas += acidEntry.getKey().getName() + ":\n";
+                    List<String> codonInfo = Lists.newArrayList();
+                    for (Map.Entry<Codon, Double> codonEntry : acidEntry.getValue().entrySet()) {
+                        codonInfo.add(codonEntry.getKey() + " -> " + ((int) (codonEntry.getValue() * 100 + 0.5)) + "%");
+                    }
+                    deltas += Joiner.on(", ").join(codonInfo) + "\n";
+                }
+                outputGeneInfo.append(deltas);
+            }
+        });
+        DefaultListCellRenderer alternatingListRenderer = new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList jList, Object o, int i, boolean b, boolean b1) {
                 super.getListCellRendererComponent(jList, o, i, b, b1);
@@ -276,7 +299,9 @@ public class OligoDesigner {
                 }
                 return this;
             }
-        });
+        };
+        outputOligoList.setCellRenderer(alternatingListRenderer);
+        //outputGeneList.setCellRenderer(alternatingListRenderer);
 
         cancelCalculateButton.addActionListener(new ActionListener() {
             @Override
@@ -375,6 +400,7 @@ public class OligoDesigner {
                                     outputInfoArea.append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
                                 }
                                 ((OligoListModel) outputOligoList.getModel()).setOligos(runner.getLastLib().getOligos());
+                                ((GeneListModel) outputGeneList.getModel()).addGenes(runner.getLastLib());
                                 cancelCalculateButton.setVisible(false);
                                 cancelCalculateButton.setEnabled(false);
                                 calculateOligosButton.setVisible(true);
@@ -409,11 +435,13 @@ public class OligoDesigner {
             outputInfoArea.setText(res.getString("exception.generic")
                     + (ex.getMessage() == null ? "." : ":\n" + ex.getMessage()));
         }
+        outputInfoArea.append("\nSee console for details.");
+        ex.printStackTrace();
+
         cancelCalculateButton.setVisible(false);
         cancelCalculateButton.setEnabled(false);
         calculateOligosButton.setVisible(true);
         calculateOligosButton.setEnabled(true);
-        ex.printStackTrace();
     }
 
     {
@@ -576,8 +604,8 @@ public class OligoDesigner {
         final JScrollPane scrollPane5 = new JScrollPane();
         panel9.add(scrollPane5, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         scrollPane5.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.black), null));
-        geneList = new JList();
-        scrollPane5.setViewportView(geneList);
+        outputGeneList = new JList();
+        scrollPane5.setViewportView(outputGeneList);
         final JPanel panel10 = new JPanel();
         panel10.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
         splitPane4.setRightComponent(panel10);
@@ -657,55 +685,4 @@ public class OligoDesigner {
     }
 
 
-    private class OligoListModel extends DefaultListModel<String> {
-        Map<Integer, List<Oligo>> oligos;
-
-        OligoListModel() {
-        }
-
-        void setOligos(Map<Integer, List<Oligo>> oligos) {
-            super.removeAllElements();
-            this.oligos = oligos;
-            for (Map.Entry<Integer, List<Oligo>> entry : oligos.entrySet()) {
-                char var = 'a';
-                for (Oligo oligo : entry.getValue()) {
-                    List<String> deltaList = Lists.newArrayList();
-                    for (Map.Entry<Codon, Integer> deltas : oligo.getDeltas().entrySet()) {
-                        deltaList.add(deltas.getKey() + " (" + deltas.getKey().getAminoAcid() + "): " + deltas.getValue());
-                    }
-                    super.addElement(entry.getKey() + " (" + var++ + "): [" + Joiner.on(", ").join(deltaList) + "]");
-                }
-            }
-        }
-
-        Oligo getActualAt(int i) {
-            int j = 0;
-            for (Map.Entry<Integer, List<Oligo>> entry : oligos.entrySet()) {
-                for (Oligo oligo : entry.getValue()) {
-                    if (j == i) return oligo;
-                    j++;
-                }
-            }
-            return null;
-        }
-    }
-
-    private class OligoListTransferHandler extends TransferHandler {
-        protected Transferable createTransferable(JComponent c) {
-            JList list = (JList) c;
-            int[] indices = list.getSelectedIndices();
-            List<String> seqs = Lists.newArrayListWithCapacity(indices.length);
-            for (int index : indices) {
-                Oligo listElem = ((OligoListModel) list.getModel()).getActualAt(index);
-                seqs.add(listElem.toString());
-            }
-            String value = Joiner.on("\n").join(seqs);
-            return new StringSelection(value);
-        }
-
-        @Override
-        public int getSourceActions(JComponent c) {
-            return TransferHandler.COPY;
-        }
-    }
 }

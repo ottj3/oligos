@@ -612,6 +612,22 @@ public class Library {
         return restrictions;
     }
 
+    public EnumBiMap<AminoAcid, Codon> getCodonsOfInterest() {
+        return codonsOfInterest;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public int getOligoLength() {
+        return oligoLength;
+    }
+
+    public int getOverlapLength() {
+        return overlapLength;
+    }
+
     public static class Builder {
         private String proteinRNA = "";
         private int seqStart = Integer.MIN_VALUE;

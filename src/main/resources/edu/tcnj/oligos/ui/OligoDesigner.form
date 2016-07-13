@@ -437,7 +437,7 @@
                                 <properties/>
                                 <border type="line"/>
                                 <children>
-                                  <component id="4b332" class="javax.swing.JList" binding="geneList">
+                                  <component id="4b332" class="javax.swing.JList" binding="outputGeneList">
                                     <constraints/>
                                     <properties/>
                                   </component>
