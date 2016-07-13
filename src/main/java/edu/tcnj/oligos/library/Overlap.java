@@ -93,6 +93,15 @@ public class Overlap extends Oligo {
         return postAttachments;
     }
 
+    @Override
+    public String toString() {
+        String ret = "";
+        for (Map.Entry<Codon, Integer> entry : this.getDeltas().entrySet()) {
+            ret += entry.getKey() + " (" + entry.getKey().getAminoAcid() + ") -> " + entry.getValue() + "\n";
+        }
+        return ret;
+    }
+
     /**
      * Helps to iterate through all overlaps for making sure they are unique.
      * Iterates through every overlap position,

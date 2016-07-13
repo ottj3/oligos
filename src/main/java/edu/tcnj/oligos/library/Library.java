@@ -466,6 +466,10 @@ public class Library {
             // while current overlap is not unique (to all previous overlaps), start swapping
             while (matches || hasRestrictions()) {
                 // swap all possible indices of current overlap based on permutation indices
+                if (!swapIt.hasNext()) {
+                    throw new RuntimeException(new OutOfSwapsException("Ran out of permutations when trying "
+                            + "to make overlap unique:\n" + overlap));
+                }
                 Map<Integer, Integer> thisSwap = swapIt.next();
                 doOverlapPermutation(overlap, thisSwap);
 
@@ -638,8 +642,8 @@ public class Library {
         }
 
         public Builder withOligoSize(int length, int overlap) {
-            checkArgument(length > 0 && length % 3 == 0, "Invalid oligo length %s", length);
-            checkArgument(overlap > 0 && overlap < length && overlap % 3 == 0, "Invalid overlap size %s", overlap);
+            checkArgument(length > 0, "Invalid oligo length %s", length);
+            checkArgument(overlap > 0 && overlap < length, "Invalid overlap size %s", overlap);
             this.oligoLength = length;
             this.overlapSize = overlap;
             return this;
