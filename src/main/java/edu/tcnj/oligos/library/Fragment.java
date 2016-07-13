@@ -97,7 +97,10 @@ public class Fragment extends Sequence {
         do {
             //Permute the positions and fill them; if this happened to
             //make any restriction enzyme sites try a different permutation
-            //TODO check hasNext() to throw a more specific exception?
+            if (!perm.hasNext()) {
+                throw new RuntimeException(new OutOfSwapsException("Ran out of permutations when filling fragment: "
+                        + this.toString()));
+            }
             positionsOfInterest = perm.next();
             for (int i = 0; i < delta; i++) {
                 set(positionsOfInterest.get(i), codon);
@@ -112,6 +115,12 @@ public class Fragment extends Sequence {
         }
         while (RestrictionHelper.containsRestrictionEnzyme(
                 RestrictionHelper.buildPermutations(range, oligos, oligoLength, overlapLength), restrictions));
+    }
+
+    @Override
+    public String toString() {
+        return codon.toString() + " (" + range.getStartPosition() + ","
+                + range.getEndPosition() + ") -> " + delta;// + "\n" + super.toString();
     }
 
     /**

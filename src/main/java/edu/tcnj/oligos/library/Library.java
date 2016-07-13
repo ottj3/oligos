@@ -95,6 +95,10 @@ public class Library {
                 SwapIterator swapIt = new SwapIterator(potentialSwaps);
                 //TODO if we want to report an inability to remove a restriction, change true to swapIt.hasNext()
                 while (true) {
+                    if (!swapIt.hasNext()) {
+                        throw new RuntimeException(new OutOfSwapsException("Ran out of potential swaps when " +
+                                "removing restriction enzyme sites from original sequence."));
+                    }
                     Map<Integer, Integer> thisSwap = swapIt.next();
                     //Try a swap based on the next indices
                     for (Map.Entry<Integer, Integer> entry : thisSwap.entrySet()) {
@@ -211,6 +215,10 @@ public class Library {
                 int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
                 //Trim the potential spots to only have as many spots as needed
                 //(necessary for filtering out the used positions from allCodonSpots later)
+                if (!perm.hasNext()) {
+                    throw new RuntimeException(new OutOfSwapsException("Ran out of permutations when setting "
+                            + "the base frequencies of " + codonOfInterest));
+                }
                 List<Integer> trimmedCOIspots = perm.next().subList(0, baseOccurrences);
                 for (Integer potentialSpot : trimmedCOIspots) {
                     sequence.set(potentialSpot, codonOfInterest);
@@ -233,6 +241,7 @@ public class Library {
                 Iterator<List<Integer>> innerPerm = Collections2.permutations(otherCodonSpots).iterator();
 
                 do {
+                    if (!innerPerm.hasNext()) break;
                     List<Integer> permutedCodonSpots = innerPerm.next();
                     int index = 0;
                     for (Map.Entry<Codon, Integer> count : counts.entrySet()) {
