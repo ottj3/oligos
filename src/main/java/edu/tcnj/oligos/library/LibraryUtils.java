@@ -1,10 +1,11 @@
 package edu.tcnj.oligos.library;
 
+import com.google.common.collect.Maps;
+import edu.tcnj.oligos.data.Codon;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static edu.tcnj.oligos.library.Library.checkInterrupt;
 
 public class LibraryUtils {
     /**
@@ -87,5 +88,46 @@ public class LibraryUtils {
         }
 
         return finalPermutations;
+    }
+
+    /**
+     * get the best approximate counts to fill the spots with the given relative frequencies
+     *
+     * @param frequencies the relative frequencies of all codons to be used
+     * @param totalCount  the number of spots to be filled
+     * @return a map from codon to the number of times it should appear (counts will sum to totalCount)
+     */
+    static Map<Codon, Integer> findCodonCounts(Map<Codon, Double> frequencies, int totalCount) {
+        Map<Codon, Integer> counts = Maps.newHashMap();
+        int totalSoFar = 0;
+        //Get approximate counts for every codon, rounding down always
+        for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+            int thisCount = (int) (entry.getValue() * totalCount);
+            totalSoFar += thisCount;
+            counts.put(entry.getKey(), thisCount);
+        }
+        //Hit the total needed by continuously adding one to the count which
+        //is furthest under its expected (exact, non-integral) count
+        while (totalSoFar < totalCount) {
+            double maxDelta = Double.NEGATIVE_INFINITY;
+            Codon codonToIncrease = Codon.PAD;
+            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
+                double thisDelta = entry.getValue() * totalCount - counts.get(entry.getKey());
+                if (thisDelta > maxDelta) {
+                    maxDelta = thisDelta;
+                    codonToIncrease = entry.getKey();
+                }
+            }
+            counts.put(codonToIncrease, counts.get(codonToIncrease) + 1);
+            totalSoFar++;
+        }
+        return counts;
+    }
+
+    static void checkInterrupt() {
+        if (Thread.currentThread().isInterrupted()) {
+            Exception e = new InterruptedException("Execution was cancelled.");
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 }

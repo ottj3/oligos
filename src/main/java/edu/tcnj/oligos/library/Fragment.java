@@ -91,7 +91,7 @@ public class Fragment extends Sequence {
                 positionsOfInterest.add(i);
             }
         }
-        Map<Codon, Integer> counts = Library.findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
+        Map<Codon, Integer> counts = LibraryUtils.findCodonCounts(codonFreqs, positionsOfInterest.size() - delta);
         Collections.shuffle(positionsOfInterest);
         Iterator<List<Integer>> perm = Collections2.permutations(positionsOfInterest).iterator();
         do {

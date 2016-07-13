@@ -220,7 +220,7 @@ public class Library {
             //Use an iterator to permute all possible orders
             Iterator<List<Integer>> perm = Collections2.permutations(potentialCOIspots).iterator();
             do {
-                checkInterrupt();
+                LibraryUtils.checkInterrupt();
                 //Calculate the base integer number of occurrences that is closest to the base percentage
                 int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
                 //Trim the potential spots to only have as many spots as needed
@@ -244,7 +244,7 @@ public class Library {
                 //If the COI permutation causes restriction sites to appear, skip to the next COI perm
                 if (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions)) continue;
 
-                Map<Codon, Integer> counts = findCodonCounts(codonFrequencies.get(acidOfInterest),
+                Map<Codon, Integer> counts = LibraryUtils.findCodonCounts(codonFrequencies.get(acidOfInterest),
                         otherCodonSpots.size());
                 List<Codon> codons = new ArrayList<>();
                 for (Map.Entry<Codon, Integer> codonEntry : counts.entrySet()) {
@@ -256,7 +256,7 @@ public class Library {
                 Iterator<List<Codon>> innerPerm = Collections2.orderedPermutations(codons).iterator();
 
                 do {
-                    checkInterrupt();
+                    LibraryUtils.checkInterrupt();
                     if (!innerPerm.hasNext()) break;
                     List<Codon> permutedCodons = innerPerm.next();
                     for (int i = 0; i < otherCodonSpots.size(); i++) {
@@ -266,40 +266,6 @@ public class Library {
             } while (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
         }
         protein.setSequence(sequence);
-    }
-
-    /**
-     * get the best approximate counts to fill the spots with the given relative frequencies
-     *
-     * @param frequencies the relative frequencies of all codons to be used
-     * @param totalCount  the number of spots to be filled
-     * @return a map from codon to the number of times it should appear (counts will sum to totalCount)
-     */
-    public static Map<Codon, Integer> findCodonCounts(Map<Codon, Double> frequencies, int totalCount) {
-        Map<Codon, Integer> counts = Maps.newHashMap();
-        int totalSoFar = 0;
-        //Get approximate counts for every codon, rounding down always
-        for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-            int thisCount = (int) (entry.getValue() * totalCount);
-            totalSoFar += thisCount;
-            counts.put(entry.getKey(), thisCount);
-        }
-        //Hit the total needed by continuously adding one to the count which
-        //is furthest under its expected (exact, non-integral) count
-        while (totalSoFar < totalCount) {
-            double maxDelta = Double.NEGATIVE_INFINITY;
-            Codon codonToIncrease = Codon.PAD;
-            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-                double thisDelta = entry.getValue() * totalCount - counts.get(entry.getKey());
-                if (thisDelta > maxDelta) {
-                    maxDelta = thisDelta;
-                    codonToIncrease = entry.getKey();
-                }
-            }
-            counts.put(codonToIncrease, counts.get(codonToIncrease) + 1);
-            totalSoFar++;
-        }
-        return counts;
     }
 
     /**
@@ -315,7 +281,7 @@ public class Library {
     }
 
     private void createOligosForPosition(int pos) {
-        checkInterrupt();
+        LibraryUtils.checkInterrupt();
         //for a given position (oligo # in overall sequence), create as many oligos as necessary to make the design
         checkArgument(0 <= pos && pos < size);
         List<Map<Codon, Integer>> oligos = Lists.newArrayList();
@@ -719,10 +685,4 @@ public class Library {
         }
     }
 
-    static void checkInterrupt() {
-        if (Thread.currentThread().isInterrupted()) {
-            Exception e = new InterruptedException("Execution was cancelled.");
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
 }
