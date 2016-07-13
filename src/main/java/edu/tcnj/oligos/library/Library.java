@@ -14,8 +14,10 @@ import edu.tcnj.oligos.library.Overlap.OverlapIterator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -60,59 +62,60 @@ public class Library {
         setBaseFrequencies(this.protein, minFreq);
     }
 
+    //Find any occurrences of the restriction enzymes in the base protein, and remove them.
     private void removeRestrictionEnzymes(Protein protein) {
         if (restrictions == null || restrictions.isEmpty()) return;
+        //Make a new sequence from the protein's codon sequence (as the protein's sequence is immutable)
         Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
+        //For every restriction: find all occurrences, remove them
         for (BaseSequence restriction : restrictions) {
-            int index = sequence.asBases().contains(restriction);
-
+            int index = sequence.asBases().indexOf(restriction);
+            //While there are still occurrences of the restriction enzyme; each run through
+            //the outer while loop deals with one given site at which the enzyme occurs
             while (index != -1) {
+                //Try swapping every codon that is at least partially within the restriction site
                 //TODO check potential off-by-a-lots for firstCodon and lastCodon
                 int firstCodon = index / 3;
                 int lastCodon = (index + restriction.size() - 1) / 3;
+                //Build a list of potential swaps for each position,
+                //and keep indices to go through permutations of these swaps
                 Map<Integer, List<Integer>> potentialSwaps = new HashMap<>();
-                List<Integer> swapIndices = new ArrayList<>();
+
+                //For every codon in this range
                 for (int i = firstCodon; i <= lastCodon; i++) {
-                    swapIndices.add(0);
                     potentialSwaps.put(i, new ArrayList<Integer>());
+                    //Go through the sequence, note the positions of any codon
+                    //that shares an amino acid with the current codon
                     for (int j = 0; j < sequence.size(); j++) {
-                        if (sequence.get(j).getAminoAcid() == sequence.get(i).getAminoAcid())
+                        if (i != j && sequence.get(j).getAminoAcid() == sequence.get(i).getAminoAcid())
                             potentialSwaps.get(i).add(j);
                     }
                 }
-                int maxIndex = swapIndices.size() - 1;
-
+                SwapIterator swapIt = new SwapIterator(potentialSwaps);
+                //TODO if we want to report an inability to remove a restriction, change true to swapIt.hasNext()
                 while (true) {
-                    checkState(swapIndices.get(maxIndex) < potentialSwaps.get(maxIndex + firstCodon).size());
-                    for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
-                        int codonPosition = entry.getKey();
-                        int swapIndex = swapIndices.get(codonPosition - firstCodon);
-                        int swapPosition = entry.getValue().get(swapIndex);
-                        Codon temp = sequence.set(codonPosition, sequence.get(swapPosition));
-                        sequence.set(swapPosition, temp);
+                    Map<Integer, Integer> thisSwap = swapIt.next();
+                    //Try a swap based on the next indices
+                    for (Map.Entry<Integer, Integer> entry : thisSwap.entrySet()) {
+                        if (entry.getValue() == -1) continue;
+
+                        Codon temp = sequence.set(entry.getKey(), sequence.get(entry.getValue()));
+                        sequence.set(entry.getValue(), temp);
                     }
 
-                    int newIndex = sequence.asBases().contains(restriction);
+                    //If this swap either removed the restriction or pushed it further back in the sequence, move on
+                    int newIndex = sequence.asBases().indexOf(restriction);
                     if (newIndex == -1 || newIndex > index) break;
 
-                    for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
-                        int codonPosition = entry.getKey();
-                        int swapIndex = swapIndices.get(codonPosition - firstCodon);
-                        int swapPosition = entry.getValue().get(swapIndex);
-                        Codon temp = sequence.set(codonPosition, sequence.get(swapPosition));
-                        sequence.set(swapPosition, temp);
-                    }
+                    //Otherwise, undo this swap to try the next one
+                    for (Map.Entry<Integer, Integer> entry : thisSwap.entrySet()) {
+                        if (entry.getValue() == -1) continue;
 
-                    int swapIndexPos = 0;
-                    swapIndices.set(swapIndexPos, swapIndices.get(swapIndexPos) + 1);
-                    while (swapIndices.get(swapIndexPos) >= potentialSwaps.get(swapIndexPos + firstCodon).size()
-                            && swapIndexPos + 1 < swapIndices.size()) {
-                        swapIndices.set(swapIndexPos, 0);
-                        swapIndexPos++;
-                        swapIndices.set(swapIndexPos, swapIndices.get(swapIndexPos) + 1);
+                        Codon temp = sequence.set(entry.getKey(), sequence.get(entry.getValue()));
+                        sequence.set(entry.getValue(), temp);
                     }
                 }
-                index = sequence.asBases().contains(restriction);
+                index = sequence.asBases().indexOf(restriction);
             }
         }
         protein.setSequence(sequence);
@@ -419,51 +422,30 @@ public class Library {
         Map<Integer, Map<Integer, List<Integer>>> potentialSwaps = findPotentialSwaps();
 
         // position      indices
-        Map<Integer, List<Integer>> permutations = Maps.newHashMap();
-        for (int pos = 0; pos < size - 1; pos++) {
-            //Initialize the permutation indices to -1.
-            //A -1 in part of the overlap means don't swap anything.
-            List<Integer> list = Lists.newArrayList(Collections.nCopies(overlapLength, -1));
-            permutations.put(pos, list);
+        Map<Integer, SwapIterator> swapIts = new HashMap<>();
+
+        //Make a SwapIterator for each overlap position
+        for (Map.Entry<Integer, Map<Integer, List<Integer>>> entry : potentialSwaps.entrySet()) {
+            swapIts.put(entry.getKey(), new SwapIterator(entry.getValue()));
         }
 
         List<Overlap> visited = new ArrayList<>();
-        int maxIndex = overlapLength - 1;
         while (it.hasNext()) {
             Overlap overlap = it.next();
             int pos = it.getCurrentPosition(); // must be after .next() call!!!
             boolean matches = matchesAnyVisited(overlap, visited);
+            SwapIterator swapIt = swapIts.get(pos);
             // while current overlap is not unique (to all previous overlaps), start swapping
-            while (matches) {
-                // ensure we haven't overflowed possible permutation indices
-                checkState(permutations.get(pos).get(maxIndex) < potentialSwaps.get(pos).get(maxIndex).size());
-
+            while (matches || hasRestrictions()) {
                 // swap all possible indices of current overlap based on permutation indices
-                doOverlapPermutation(overlap, permutations.get(pos), potentialSwaps.get(pos));
+                Map<Integer, Integer> thisSwap = swapIt.next();
+                doOverlapPermutation(overlap, thisSwap);
 
                 matches = matchesAnyVisited(overlap, visited);
 
-                if (matches
-                        || (restrictions != null && !restrictions.isEmpty()
-                        && RestrictionHelper.containsRestrictionEnzyme(
-                        RestrictionHelper.buildPermutations(new Fragment.Range(0, size - 1),
-                                oligos, oligoLength, overlapLength), restrictions))) {
-                    //Undo the swap if it is not unique (by swapping again with the same permutation indices)
-                    doOverlapPermutation(overlap, permutations.get(pos), potentialSwaps.get(pos));
-                }
-
-                // increment permutation indices (to go through all possible permutations)
-                int overlapPos = 0;
-                List<Integer> perm = permutations.get(pos);
-                perm.set(overlapPos, perm.get(overlapPos) + 1);
-                while (perm.get(overlapPos) >= potentialSwaps.get(pos).get(overlapPos).size()
-                        && overlapPos + 1 < perm.size()) {
-                    perm.set(overlapPos, -1);
-                    overlapPos++;
-//                    if (overlapPos >= perm.size()) {
-//                        break;
-//                    }
-                    perm.set(overlapPos, perm.get(overlapPos) + 1);
+                if (matches || hasRestrictions()) {
+                    //Undo the swap if it is not unique or if it made a restriction site
+                    doOverlapPermutation(overlap, thisSwap);
                 }
             }
 
@@ -472,20 +454,21 @@ public class Library {
         }
     }
 
-    private void doOverlapPermutation(Overlap overlap, List<Integer> permutationIndices,
-                                      Map<Integer, List<Integer>> potentialSwap) {
+    private boolean hasRestrictions() {
+        return (restrictions != null && !restrictions.isEmpty()
+                && RestrictionHelper.containsRestrictionEnzyme(
+                RestrictionHelper.buildPermutations(new Fragment.Range(0, size - 1),
+                        oligos, oligoLength, overlapLength), restrictions));
+    }
+
+    private void doOverlapPermutation(Overlap overlap, Map<Integer, Integer> thisSwap) {
         //Based on the given permutation indices, swap each part of the oligo
-        for (int overlapIndex = 0; overlapIndex < overlapLength; overlapIndex++) {
-            int permutationIndex = permutationIndices.get(overlapIndex);
+        for (Map.Entry<Integer, Integer> entry : thisSwap.entrySet()) {
+            int attachIndex = entry.getValue();
 
-            //-1 means "do nothing" so skip swaps for the given codon
-            if (permutationIndex == -1) continue;
+            if (attachIndex == -1) continue;
 
-            //From the potentialSwaps list, get the swap corresponding to this index
-            List<Integer> swaps = potentialSwap.get(overlapIndex);
-            if (swaps == null || swaps.isEmpty()) continue;
-            int attachIndex = swaps.get(permutationIndex);
-
+            int overlapIndex = entry.getKey();
             //Swap with either the pre or post attachments based on the index
             if (attachIndex < oligoLength) {
                 overlap.swapWithAttachments(overlapIndex, attachIndex, overlap.getPreAttachments());
@@ -677,4 +660,64 @@ public class Library {
         }
     }
 
+    public static class SwapIterator {
+        private Map<Integer, List<Integer>> potentialSwaps;
+        private Map<Integer, Integer> swapIndices;
+        private int baseValue;
+
+        public SwapIterator(Map<Integer, List<Integer>> potentialSwaps) {
+            this(potentialSwaps, -1);
+        }
+
+        public SwapIterator(Map<Integer, List<Integer>> potentialSwaps, int baseValue) {
+            this.potentialSwaps = potentialSwaps;
+            this.baseValue = baseValue;
+            initializeIndices();
+        }
+
+        private void initializeIndices() {
+            swapIndices = new HashMap<>();
+            for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
+                swapIndices.put(entry.getKey(), baseValue);
+            }
+        }
+
+        public Map<Integer, Integer> peek() {
+            if (!this.hasNext()) throw new NoSuchElementException("Out of potential swaps.");
+            Map<Integer, Integer> currentSwap = new HashMap<>();
+            for (Map.Entry<Integer, Integer> entry : swapIndices.entrySet()) {
+                if (entry.getValue() == -1) {
+                    currentSwap.put(entry.getKey(), -1);
+                } else {
+                    currentSwap.put(entry.getKey(), potentialSwaps.get(entry.getKey()).get(entry.getValue()));
+                }
+            }
+            return currentSwap;
+        }
+
+        public Map<Integer, Integer> next() {
+            Map<Integer, Integer> nextVal = this.peek();
+            Iterator<Map.Entry<Integer, Integer>> it = swapIndices.entrySet().iterator();
+            Map.Entry<Integer, Integer> next = it.next();
+            int key = next.getKey();
+            int value = next.getValue();
+            swapIndices.put(key, value + 1);
+            while (swapIndices.get(key) >= potentialSwaps.get(key).size()
+                    && it.hasNext()) {
+                swapIndices.put(key, baseValue);
+                next = it.next();
+                key = next.getKey();
+                value = next.getValue();
+                swapIndices.put(key, value + 1);
+            }
+            return nextVal;
+        }
+
+        public boolean hasNext() {
+            for (Map.Entry<Integer, Integer> entry : swapIndices.entrySet()) {
+                if (entry.getValue() >= potentialSwaps.get(entry.getKey()).size()) return false;
+            }
+            return true;
+        }
+    }
 }

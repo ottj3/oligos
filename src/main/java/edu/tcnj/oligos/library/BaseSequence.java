@@ -15,7 +15,7 @@ public class BaseSequence extends AbstractList<Base> {
         this.sequence = sequence;
     }
 
-    public int contains(BaseSequence other) {
+    public int indexOf(BaseSequence other) {
         for (int i = 0; i < this.sequence.size(); i++) {
             for (int j = 0; j < other.sequence.size(); j++) {
                 if (i + j >= this.sequence.size()) return -1;
