@@ -15,6 +15,7 @@ import java.util.List;
  */
 public class Sequence extends AbstractList<Codon> {
     protected List<Codon> sequence;
+    private BaseSequence bases;
 
     Sequence() {
     }
@@ -27,16 +28,30 @@ public class Sequence extends AbstractList<Codon> {
 
     @Override
     public Codon set(int index, Codon element) {
+        int start = index * 3;
+        List<Base> codonBase = element.toBases();
+        for (int i = 0; i < 3; i++) {
+            bases.set(i + start, codonBase.get(i));
+        }
         return sequence.set(index, element);
     }
 
     @Override
     public void add(int index, Codon element) {
+        int start = index * 3;
+        List<Base> codonBase = element.toBases();
+        for (int i = 0; i < 3; i++) {
+            bases.add(start + i, codonBase.get(i));
+        }
         sequence.add(index, element);
     }
 
     @Override
     public Codon remove(int index) {
+        int start = index * 3;
+        for (int i = start + 2; i >= start; i--) {
+            bases.remove(i);
+        }
         return sequence.remove(index);
     }
 
@@ -70,22 +85,28 @@ public class Sequence extends AbstractList<Codon> {
 
     public Sequence(List<Codon> codons) {
         this.sequence = codons;
+        if (codons != null) asBases();
     }
 
     public void setSequence(List<Codon> seq) {
         this.sequence = seq;
+        this.bases = null;
+        if (seq != null) asBases();
     }
 
     public List<Codon> getSequence() {
         return sequence;
     }
 
-    public BaseSequence asBases() {
-        List<Base> bases = Lists.newArrayList();
-        for (Codon codon : sequence) {
-            bases.addAll(codon.toBases());
+    BaseSequence asBases() {
+        if (this.bases == null) {
+            List<Base> baseList = Lists.newArrayList();
+            for (Codon codon : sequence) {
+                baseList.addAll(codon.toBases());
+            }
+            this.bases = new BaseSequence(baseList);
         }
-        return new BaseSequence(bases);
+        return this.bases;
     }
 
     /**
