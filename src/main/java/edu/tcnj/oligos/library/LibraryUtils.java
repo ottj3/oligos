@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import edu.tcnj.oligos.data.Codon;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public class LibraryUtils {
         for (Sequence possiblePermutation : possiblePermutations) {
             BaseSequence baseSequence = possiblePermutation.asBases();
             for (BaseSequence restriction : restrictions) {
-                if (baseSequence.indexOf(restriction) != -1) {
+                if (baseSequence.posOfMatch(restriction) != -1) {
                     return true;
                 }
             }
@@ -39,7 +40,7 @@ public class LibraryUtils {
     static boolean containsRestrictionEnzyme(Sequence sequence, List<BaseSequence> restrictions) {
         if (restrictions == null || restrictions.isEmpty()) return false;
         for (BaseSequence restriction : restrictions) {
-            if (sequence.asBases().indexOf(restriction) != -1) return true;
+            if (sequence.asBases().posOfMatch(restriction) != -1) return true;
         }
         return false;
     }
@@ -80,9 +81,12 @@ public class LibraryUtils {
                 if (Sequence.regionsMatch(partialPermutation, 0, overlapLength, overlap, 0, overlapLength)) {
                     //Make the sequence produced by putting this oligo in
                     //front of the permutation, add it to fullSequences
-                    Sequence fullSequence = new Sequence(new ArrayList<>(oligo));
-                    fullSequence.addAll(partialPermutation.subList(overlapLength, partialPermutation.size()));
-                    finalPermutations.add(fullSequence);
+                    Sequence ending = partialPermutation.subList(overlapLength, partialPermutation.size());
+                    Codon[] fullSeqArr = new Codon[oligo.size() + ending.size()];
+                    System.arraycopy(oligo.toArray(), 0, fullSeqArr, 0, oligo.size());
+                    System.arraycopy(ending.toArray(), 0, fullSeqArr, oligo.size(), ending.size());
+
+                    finalPermutations.add(new Sequence(Arrays.asList(fullSeqArr)));
                 }
             }
         }

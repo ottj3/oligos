@@ -1,15 +1,8 @@
 package edu.tcnj.oligos.data;
 
-import com.google.common.collect.Collections2;
-import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public enum Codon {
     ATG("ATG", AminoAcid.MET),
@@ -101,10 +94,10 @@ public enum Codon {
 
     PAD("???", AminoAcid.PAD, true);
 
-    private String bases;
-    private AminoAcid aa;
-    private List<Base> baseSeq;
-    private static Map<AminoAcid, List<Codon>> acidCodonMap = new HashMap<>();
+    private final String bases;
+    private final AminoAcid aa;
+    private final Base[] baseSeq;
+    private static final Map<AminoAcid, List<Codon>> acidCodonMap = Maps.newEnumMap(AminoAcid.class);
 
     static {
         for (Codon c : Codon.values()) {
@@ -129,20 +122,19 @@ public enum Codon {
         if (isWildcard) {
             aa.setWildcard(this);
         }
-        List<Base> baseList = new ArrayList<>();
+        Base[] baseTmp;
         if (isWildcard) {
-            if (this.aa == AminoAcid.PAD) {
-                baseList.addAll(Arrays.asList(Base.Z, Base.Z, Base.Z));
-            } else {
-                baseList.addAll(Arrays.asList(Base.N, Base.N, Base.N));
-            }
+            baseTmp = this.aa == AminoAcid.PAD
+                    ? new Base[]{Base.Z, Base.Z, Base.Z}
+                    : new Base[]{Base.N, Base.N, Base.N};
         } else {
-            for (char c : bases.toCharArray()) {
-                baseList.add(Base.valueOf(String.valueOf(c)));
+            char[] chars = bases.toCharArray();
+            baseTmp = new Base[chars.length];
+            for (int i = 0; i < chars.length; i++) {
+                baseTmp[i] = (Base.valueOf(String.valueOf(chars[i])));
             }
         }
-        this.baseSeq = Collections.unmodifiableList(baseList);
-
+        this.baseSeq = baseTmp;
     }
 
     public String getBases() {
@@ -162,7 +154,7 @@ public enum Codon {
         return bases.equals("???") ? aa.name() : getBases();
     }
 
-    public List<Base> toBases() {
+    public Base[] toBases() {
         return baseSeq;
     }
 }

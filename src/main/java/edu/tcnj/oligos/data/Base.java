@@ -25,14 +25,10 @@ public enum Base {
 
     N(A, C, T, G, W, S, M, K, R, Y, B, D, H, V);
 
-    List<Base> included;
+    private final List<Base> included;
 
     Base(Base... included) {
-        if (included == null) {
-            this.included = Lists.newArrayList(this);
-        } else {
-            this.included = Lists.newArrayList(included);
-        }
+        this.included = included == null ? Lists.newArrayList(this) : Lists.newArrayList(included);
     }
 
     public boolean matches(Base other) {

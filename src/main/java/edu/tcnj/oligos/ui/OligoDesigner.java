@@ -10,26 +10,19 @@ import com.intellij.uiDesigner.core.Spacer;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
-import edu.tcnj.oligos.library.BaseSequence;
-import edu.tcnj.oligos.library.Design;
-import edu.tcnj.oligos.library.Gene;
-import edu.tcnj.oligos.library.Oligo;
-import edu.tcnj.oligos.library.OutOfSwapsException;
+import edu.tcnj.oligos.library.*;
+import sun.awt.AppContext;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 public class OligoDesigner {
@@ -73,10 +66,11 @@ public class OligoDesigner {
     public static void main(String[] args) {
         JFrame frame = new JFrame("Oligo Designer");
         frame.setContentPane(new OligoDesigner().mainPanel);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
         frame.setSize(1200, 600);
         frame.setVisible(true);
+        AppContext.getAppContext().put(SwingWorker.class, Executors.newSingleThreadExecutor());
     }
 
     private OligoDesigner() {

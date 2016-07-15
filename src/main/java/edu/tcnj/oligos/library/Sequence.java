@@ -7,6 +7,7 @@ import edu.tcnj.oligos.data.Codon;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,9 +31,9 @@ public class Sequence extends AbstractList<Codon> {
     public Codon set(int index, Codon element) {
         if (bases != null) {
             int start = index * 3;
-            List<Base> codonBase = element.toBases();
+            Base[] codonBase = element.toBases();
             for (int i = 0; i < 3; i++) {
-                bases.set(i + start, codonBase.get(i));
+                bases.set(i + start, codonBase[i]);
             }
 
         }
@@ -43,9 +44,9 @@ public class Sequence extends AbstractList<Codon> {
     public void add(int index, Codon element) {
         if (bases != null) {
             int start = index * 3;
-            List<Base> codonBase = element.toBases();
+            Base[] codonBase = element.toBases();
             for (int i = 0; i < 3; i++) {
-                bases.add(start + i, codonBase.get(i));
+                bases.add(start + i, codonBase[i]);
             }
         }
         sequence.add(index, element);
@@ -69,7 +70,12 @@ public class Sequence extends AbstractList<Codon> {
 
     @Override
     public Sequence subList(int fromIndex, int toIndex) {
-        return new Sequence(Lists.newArrayList(sequence.subList(fromIndex, toIndex)));
+        return new Sequence(Lists.newArrayList(Arrays.copyOfRange(toArray(), fromIndex, toIndex)));
+    }
+
+    @Override
+    public Codon[] toArray() {
+        return sequence.toArray(new Codon[sequence.size()]);
     }
 
     /**
@@ -105,11 +111,12 @@ public class Sequence extends AbstractList<Codon> {
 
     BaseSequence asBases() {
         if (this.bases == null) {
-            List<Base> baseList = Lists.newArrayList();
-            for (Codon codon : sequence) {
-                baseList.addAll(codon.toBases());
+            Base[] bases = new Base[sequence.size() * 3];
+            for (int i = 0; i < sequence.size(); i++) {
+                Codon codon = sequence.get(i);
+                System.arraycopy(codon.toBases(), 0, bases, i * 3, 3);
             }
-            this.bases = new BaseSequence(baseList);
+            this.bases = new BaseSequence(Arrays.asList(bases));
         }
         return this.bases;
     }

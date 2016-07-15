@@ -35,6 +35,7 @@ public class Library {
     private final int oligoLength; // size of an oligo
     private final int overlapLength; // size of an overlap
     private final int smalligo; // oligoLength - overlapLength; value needed in many calculations
+    private final Fragment.Range fullRange;
 
     private Map<Codon, Design> designs;
     private EnumBiMap<AminoAcid, Codon> codonsOfInterest = EnumBiMap.create(AminoAcid.class, Codon.class);
@@ -55,6 +56,7 @@ public class Library {
         this.designs = designs;
         this.codonsOfInterest = codonsOfInterest;
         this.restrictions = restrictions;
+        this.fullRange = new Fragment.Range(0, size - 1);
 
         removeRestrictionEnzymes(this.protein);
 
@@ -70,7 +72,7 @@ public class Library {
         //For every restriction: find all occurrences, remove them
         for (int i = 0; i < restrictions.size(); i++) {
             BaseSequence restriction = restrictions.get(i);
-            int index = sequence.asBases().indexOf(restriction);
+            int index = sequence.asBases().posOfMatch(restriction);
             //While there are still occurrences of the restriction enzyme; each run through
             //the outer while loop deals with one given site at which the enzyme occurs
             while (index != -1) {
@@ -110,14 +112,14 @@ public class Library {
                     boolean createdOther = false;
                     BaseSequence baseSequence = sequence.asBases();
                     for (int j = 0; j < i; j++) {
-                        if (baseSequence.indexOf(restrictions.get(j)) != -1) {
+                        if (baseSequence.posOfMatch(restrictions.get(j)) != -1) {
                             createdOther = true;
                             break;
                         }
                     }
 
                     if (!createdOther) {
-                        int newIndex = baseSequence.indexOf(restriction);
+                        int newIndex = baseSequence.posOfMatch(restriction);
                         if (newIndex == -1 || newIndex > index) break;
                     }
 
@@ -129,7 +131,7 @@ public class Library {
                         sequence.set(entry.getValue(), temp);
                     }
                 }
-                index = sequence.asBases().indexOf(restriction);
+                index = sequence.asBases().posOfMatch(restriction);
             }
         }
         protein.setSequence(sequence);
@@ -219,10 +221,12 @@ public class Library {
             Collections.shuffle(potentialCOIspots);
             //Use an iterator to permute all possible orders
             Iterator<List<Integer>> perm = Collections2.permutations(potentialCOIspots).iterator();
+            boolean skipCheck;
+            int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
             do {
                 LibraryUtils.checkInterrupt();
+                skipCheck = false;
                 //Calculate the base integer number of occurrences that is closest to the base percentage
-                int baseOccurrences = (int) (baseFreq * allCodonSpots.size() + 0.5);
                 //Trim the potential spots to only have as many spots as needed
                 //(necessary for filtering out the used positions from allCodonSpots later)
                 if (!perm.hasNext()) {
@@ -242,7 +246,10 @@ public class Library {
                     sequence.set(index, Codon.PAD);
                 }
                 //If the COI permutation causes restriction sites to appear, skip to the next COI perm
-                if (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions)) continue;
+                if (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions)) {
+                    skipCheck = true;
+                    continue;
+                }
 
                 Map<Codon, Integer> counts = LibraryUtils.findCodonCounts(codonFrequencies.get(acidOfInterest),
                         otherCodonSpots.size());
@@ -264,7 +271,7 @@ public class Library {
                         sequence.set(otherCodonSpots.get(i), permutedCodons.get(i));
                     }
                 } while (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
-            } while (LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
+            } while (skipCheck || LibraryUtils.containsRestrictionEnzyme(sequence, restrictions));
         }
         protein.setSequence(sequence);
     }
@@ -467,8 +474,8 @@ public class Library {
     private boolean hasRestrictions() {
         return (restrictions != null && !restrictions.isEmpty()
                 && LibraryUtils.containsRestrictionEnzyme(
-                LibraryUtils.buildPermutations(new Fragment.Range(0, size - 1),
-                        oligos, oligoLength, overlapLength), restrictions));
+                        LibraryUtils.buildPermutations(fullRange,
+                            oligos, oligoLength, overlapLength), restrictions));
     }
 
     private void doOverlapPermutation(Overlap overlap, Map<Integer, Integer> thisSwap) {
