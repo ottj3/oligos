@@ -28,29 +28,36 @@ public class Sequence extends AbstractList<Codon> {
 
     @Override
     public Codon set(int index, Codon element) {
-        int start = index * 3;
-        List<Base> codonBase = element.toBases();
-        for (int i = 0; i < 3; i++) {
-            bases.set(i + start, codonBase.get(i));
+        if (bases != null) {
+            int start = index * 3;
+            List<Base> codonBase = element.toBases();
+            for (int i = 0; i < 3; i++) {
+                bases.set(i + start, codonBase.get(i));
+            }
+
         }
         return sequence.set(index, element);
     }
 
     @Override
     public void add(int index, Codon element) {
-        int start = index * 3;
-        List<Base> codonBase = element.toBases();
-        for (int i = 0; i < 3; i++) {
-            bases.add(start + i, codonBase.get(i));
+        if (bases != null) {
+            int start = index * 3;
+            List<Base> codonBase = element.toBases();
+            for (int i = 0; i < 3; i++) {
+                bases.add(start + i, codonBase.get(i));
+            }
         }
         sequence.add(index, element);
     }
 
     @Override
     public Codon remove(int index) {
-        int start = index * 3;
-        for (int i = start + 2; i >= start; i--) {
-            bases.remove(i);
+        if (bases != null) {
+            int start = index * 3;
+            for (int i = start + 2; i >= start; i--) {
+                bases.remove(i);
+            }
         }
         return sequence.remove(index);
     }
@@ -85,13 +92,11 @@ public class Sequence extends AbstractList<Codon> {
 
     public Sequence(List<Codon> codons) {
         this.sequence = codons;
-        if (codons != null) asBases();
     }
 
     public void setSequence(List<Codon> seq) {
         this.sequence = seq;
         this.bases = null;
-        if (seq != null) asBases();
     }
 
     public List<Codon> getSequence() {
