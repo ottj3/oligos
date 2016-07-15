@@ -74,10 +74,10 @@ public class LibraryUtils {
         //For every oligo in this position
         for (Oligo oligo : oligos.get(position)) {
             //Get the ending overlap base sequence for this oligo
-            BaseSequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength).asBases();
+            Sequence overlap = oligo.subList(oligoLength - overlapLength, oligoLength);
             for (Sequence partialPermutation : partialPermutations) {
                 //If any of the permutations start with this overlap, that means that this oligo can connect to it
-                if (partialPermutation.asBases().indexOf(overlap) == 0) {
+                if (Sequence.regionsMatch(partialPermutation, 0, overlapLength, overlap, 0, overlapLength)) {
                     //Make the sequence produced by putting this oligo in
                     //front of the permutation, add it to fullSequences
                     Sequence fullSequence = new Sequence(new ArrayList<>(oligo));
