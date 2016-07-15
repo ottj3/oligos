@@ -14,6 +14,8 @@ import edu.tcnj.oligos.library.*;
 import sun.awt.AppContext;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
@@ -252,18 +254,14 @@ public class OligoDesigner {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 int index = outputOligoList.locationToIndex(e.getPoint());
-                if (index == -1) return;
-                Oligo oligo = ((OligoListModel) outputOligoList.getModel()).getActualAt(index);
-                outputOligoInfo.setText("Sequence: ");
-                outputOligoInfo.append(oligo.toString() + "\n\n");
-                outputOligoInfo.append(String.format(res.getString("info.oligo.position"),
-                        Integer.valueOf(((String) outputOligoList.getModel().getElementAt(index)).split(" ")[0]))
-                        + "\n\n");
-                String deltas = "Codon -> Delta\n";
-                for (Map.Entry<Codon, Integer> entry : oligo.getDeltas().entrySet()) {
-                    deltas += entry.getKey() + " (" + entry.getKey().getAminoAcid() + ") -> " + entry.getValue() + "\n";
-                }
-                outputOligoInfo.append(deltas);
+                updateOligoListInfoBox(index);
+            }
+        });
+        outputOligoList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                int index = outputOligoList.getLeadSelectionIndex();
+                updateOligoListInfoBox(index);
             }
         });
         outputGeneList.addMouseListener(new MouseAdapter() {
@@ -271,20 +269,14 @@ public class OligoDesigner {
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
                 int index = outputGeneList.locationToIndex(e.getPoint());
-                if (index == -1) return;
-                Gene gene = ((GeneListModel) outputGeneList.getModel()).getActualAt(index);
-                outputGeneInfo.setText("Sequence: ");
-                outputGeneInfo.append(gene.toString() + "\n\n");
-                String deltas = "Codon Frequencies\n\n";
-                for (Map.Entry<AminoAcid, Map<Codon, Double>> acidEntry : gene.getFreqs().entrySet()) {
-                    deltas += acidEntry.getKey().getName() + ":\n";
-                    List<String> codonInfo = Lists.newArrayList();
-                    for (Map.Entry<Codon, Double> codonEntry : acidEntry.getValue().entrySet()) {
-                        codonInfo.add(codonEntry.getKey() + " -> " + ((int) (codonEntry.getValue() * 100 + 0.5)) + "%");
-                    }
-                    deltas += Joiner.on(", ").join(codonInfo) + "\n";
-                }
-                outputGeneInfo.append(deltas);
+                updateGeneListInfoBox(index);
+            }
+        });
+        outputGeneList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                int index = outputGeneList.getLeadSelectionIndex();
+                updateGeneListInfoBox(index);
             }
         });
         DefaultListCellRenderer alternatingListRenderer = new DefaultListCellRenderer() {
@@ -427,6 +419,38 @@ public class OligoDesigner {
                 cancelCalculateButton.setEnabled(true);
             }
         });
+    }
+
+    private void updateGeneListInfoBox(int index) {
+        if (index == -1) return;
+        Gene gene = ((GeneListModel) outputGeneList.getModel()).getActualAt(index);
+        outputGeneInfo.setText("Sequence: ");
+        outputGeneInfo.append(gene.toString() + "\n\n");
+        String deltas = "Codon Frequencies\n\n";
+        for (Map.Entry<AminoAcid, Map<Codon, Double>> acidEntry : gene.getFreqs().entrySet()) {
+            deltas += acidEntry.getKey().getName() + ":\n";
+            List<String> codonInfo = Lists.newArrayList();
+            for (Map.Entry<Codon, Double> codonEntry : acidEntry.getValue().entrySet()) {
+                codonInfo.add(codonEntry.getKey() + " -> " + ((int) (codonEntry.getValue() * 100 + 0.5)) + "%");
+            }
+            deltas += Joiner.on(", ").join(codonInfo) + "\n";
+        }
+        outputGeneInfo.append(deltas);
+    }
+
+    private void updateOligoListInfoBox(int index) {
+        if (index == -1) return;
+        Oligo oligo = ((OligoListModel) outputOligoList.getModel()).getActualAt(index);
+        outputOligoInfo.setText("Sequence: ");
+        outputOligoInfo.append(oligo.toString() + "\n\n");
+        outputOligoInfo.append(String.format(res.getString("info.oligo.position"),
+                Integer.valueOf(((String) outputOligoList.getModel().getElementAt(index)).split(" ")[0]))
+                + "\n\n");
+        String deltas = "Codon -> Delta\n";
+        for (Map.Entry<Codon, Integer> entry : oligo.getDeltas().entrySet()) {
+            deltas += entry.getKey() + " (" + entry.getKey().getAminoAcid() + ") -> " + entry.getValue() + "\n";
+        }
+        outputOligoInfo.append(deltas);
     }
 
     private void handleException(Exception ex) {
