@@ -86,7 +86,7 @@ public class PythonHandler {
     private Object runScript(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) {
         try {
             Jep jep = new Jep(false);
-            jep.runScript("design.py");
+            jep.runScript("design2.py");
             Object res = jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
             // jep.close(); pending bugs in jep
             return res;
