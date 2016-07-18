@@ -443,21 +443,14 @@ public class OligoDesigner {
                     phase = lib.getExecutionPhase();
                 }
                 labelProgess.setText(res.getString("label.progress.phase." + phase.name()));
-                int lastPct = progressBar.getValue();
-                int currPct = phase.pct();
-                if (lastPct >= currPct && !(lastPct + 1 == progressBar.getMaximum())) {
-                    lastPct++;
-                } else {
-                    lastPct = currPct;
-                }
-                progressBar.setValue(lastPct);
+                progressBar.setValue(lib == null ? 0 : lib.getExecutionPercent());
             }
         });
         progressUpdate.start();
     }
 
     private void updateGeneListInfoBox(int index) {
-        if (index == -1) return;
+        if (index == -1 || index >= outputGeneList.getModel().getSize()) return;
         Gene gene = ((GeneListModel) outputGeneList.getModel()).getActualAt(index);
         outputGeneInfo.setText("Sequence: ");
         outputGeneInfo.append(gene.toString() + "\n\n");
@@ -474,7 +467,7 @@ public class OligoDesigner {
     }
 
     private void updateOligoListInfoBox(int index) {
-        if (index == -1) return;
+        if (index == -1 || index >= outputOligoList.getModel().getSize()) return;
         Oligo oligo = ((OligoListModel) outputOligoList.getModel()).getActualAt(index);
         outputOligoInfo.setText("Sequence: ");
         outputOligoInfo.append(oligo.toString() + "\n\n");

@@ -42,9 +42,11 @@ public class Library {
     private Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
     private Map<Integer, List<Oligo>> oligos;
     private Map<Integer, List<Overlap>> overlaps;
-
     private final List<BaseSequence> restrictions;
+
     private Phase executionPhase;
+    private int percentComplete = 0;
+    private int overlapsPercent = 0;
 
     private Library(Protein protein, int size, int oligoLength, int overlapLength, Map<Codon, Design> designs,
                     EnumBiMap<AminoAcid, Codon> codonsOfInterest, List<BaseSequence> restrictions) {
@@ -57,11 +59,6 @@ public class Library {
         this.codonsOfInterest = codonsOfInterest;
         this.restrictions = restrictions;
         this.fullRange = new Fragment.Range(0, size - 1);
-
-        removeRestrictionEnzymes(this.protein);
-
-        this.codonFrequencies = calcFrequencies();
-        setBaseFrequencies(this.protein, minFreq);
     }
 
     //Find any occurrences of the restriction enzymes in the base protein, and remove them.
@@ -453,9 +450,14 @@ public class Library {
         for (Map.Entry<Integer, Map<Integer, List<Integer>>> entry : potentialSwaps.entrySet()) {
             swapIts.put(entry.getKey(), new SwapIterator(entry.getValue()));
         }
+        double numTotal = 0;
+        for (List<Overlap> overlapList : overlaps.values()) {
+            numTotal += overlapList.size();
+        }
 
         List<Overlap> visited = new ArrayList<>();
         while (it.hasNext()) {
+            this.overlapsPercent = (int) (100 * (visited.size() / numTotal));
             Overlap overlap = it.next();
             int pos = it.getCurrentPosition(); // must be after .next() call!!!
             boolean matches = matchesAnyVisited(overlap, visited);
@@ -634,6 +636,11 @@ public class Library {
 
     public synchronized void setExecutionPhase(Phase phase) {
         this.executionPhase = phase;
+        this.percentComplete = phase.pct();
+    }
+
+    public int getExecutionPercent() {
+        return percentComplete + (int) (0.65 * overlapsPercent);
     }
 
     public static class Builder {
@@ -709,7 +716,7 @@ public class Library {
         MAKING_OLIGOS(20),
         FILLING_FRAGMENTS(25),
         MAKING_OVERLAPS(30),
-        OVERLAPS_UNIQUE(50),
+        OVERLAPS_UNIQUE(35),
         CANCELLED(0),
         FINISHED(100);
 
