@@ -48,6 +48,7 @@ class Runner {
     }
 
     void run() {
+        this.lastLib = null;
         String trimmedRNA = seq.substring(start, end);
         Protein gene = new Protein(trimmedRNA);
         String proteinString = Joiner.on("").join(gene.getAminoAcidSequence());
@@ -94,21 +95,23 @@ class Runner {
                 .withSequenceLength(offset / 3, rnaEnd / 3)
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)
-                .withMinFrequencies(baseFrequencyMap)
                 .withRestrictions(restrictions)
                 .build();
         this.lastLib = lib;
 
         // run functions
+        lib.removeRestrictionEnzymes();
+        lib.initBaseFrequencies(baseFrequencyMap);
+
         lib.createOligos();
         lib.fillFragments();
 
         lib.createOverlaps();
         lib.makeOverlapsUnique();
-
+        lib.setExecutionPhase(Library.Phase.FINISHED);
     }
 
-    public Library getLastLib() {
+    Library getLastLib() {
         return lastLib;
     }
 }

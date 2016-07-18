@@ -39,15 +39,15 @@ public class Library {
 
     private Map<Codon, Design> designs;
     private EnumBiMap<AminoAcid, Codon> codonsOfInterest = EnumBiMap.create(AminoAcid.class, Codon.class);
-    private final Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
+    private Map<AminoAcid, Map<Codon, Double>> codonFrequencies;
     private Map<Integer, List<Oligo>> oligos;
     private Map<Integer, List<Overlap>> overlaps;
 
     private final List<BaseSequence> restrictions;
+    private Phase executionPhase;
 
     private Library(Protein protein, int size, int oligoLength, int overlapLength, Map<Codon, Design> designs,
-                    EnumBiMap<AminoAcid, Codon> codonsOfInterest,
-                    Map<Codon, Double> minFreq, List<BaseSequence> restrictions) {
+                    EnumBiMap<AminoAcid, Codon> codonsOfInterest, List<BaseSequence> restrictions) {
         this.protein = protein;
         this.size = size;
         this.oligoLength = oligoLength;
@@ -65,8 +65,9 @@ public class Library {
     }
 
     //Find any occurrences of the restriction enzymes in the base protein, and remove them.
-    private void removeRestrictionEnzymes(Protein protein) {
+    public void removeRestrictionEnzymes() {
         if (restrictions == null || restrictions.isEmpty()) return;
+        setExecutionPhase(Phase.REMOVING_RESTRICTIONS);
         //Make a new sequence from the protein's codon sequence (as the protein's sequence is immutable)
         Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
         //For every restriction: find all occurrences, remove them
@@ -137,7 +138,13 @@ public class Library {
         protein.setSequence(sequence);
     }
 
+    public void initBaseFrequencies(Map<Codon, Double> minFreq) {
+        this.codonFrequencies = calcFrequencies();
+        setBaseFrequencies(this.protein, minFreq);
+    }
+
     private Map<AminoAcid, Map<Codon, Double>> calcFrequencies() {
+        setExecutionPhase(Phase.CALC_FREQ);
         //Calculate the relative frequencies of all codons of the same acid as the codons of interest.
         //Used for filling in the rest of the codons once the codons of interest are set.
 
@@ -174,6 +181,7 @@ public class Library {
     //Set the codons of interest frequencies as desired for the design,
     //and fill in all other codons of the same acid based on their frequencies
     private void setBaseFrequencies(Protein protein, Map<Codon, Double> minFreq) {
+        setExecutionPhase(Phase.SETTING_BASE_FREQ);
         Sequence sequence = new Sequence(Lists.newArrayList(protein.getSequence()));
         //For every codon of interest
         for (Map.Entry<Codon, Double> entry : minFreq.entrySet()) {
@@ -282,6 +290,7 @@ public class Library {
      */
     public void createOligos() {
         if (oligos != null) return;
+        setExecutionPhase(Phase.MAKING_OLIGOS);
         oligos = Maps.newHashMap();
         for (int i = 0; i < size; i++) {
             createOligosForPosition(i);
@@ -335,6 +344,7 @@ public class Library {
     }
 
     public void fillFragments() {
+        setExecutionPhase(Phase.FILLING_FRAGMENTS);
         FragmentIterator it = fragmentIterator();
         while (it.hasNext()) {
             it.next().fill();
@@ -347,6 +357,7 @@ public class Library {
      */
     public void createOverlaps() {
         if (overlaps != null) return;
+        setExecutionPhase(Phase.MAKING_OVERLAPS);
         overlaps = Maps.newHashMap();
         for (int i = 0; i < size - 1; i++) {
             createOverlapsForPosition(i);
@@ -430,6 +441,7 @@ public class Library {
      * This allows the oligos to connect only when they are supposed to.
      */
     public void makeOverlapsUnique() {
+        setExecutionPhase(Phase.OVERLAPS_UNIQUE);
         OverlapIterator it = overlapIterator();
         // position      index    swaps
         Map<Integer, Map<Integer, List<Integer>>> potentialSwaps = findPotentialSwaps();
@@ -616,6 +628,14 @@ public class Library {
         return overlapLength;
     }
 
+    public synchronized Phase getExecutionPhase() {
+        return executionPhase;
+    }
+
+    public synchronized void setExecutionPhase(Phase phase) {
+        this.executionPhase = phase;
+    }
+
     public static class Builder {
         private String proteinRNA = "";
         private int seqStart = Integer.MIN_VALUE;
@@ -624,7 +644,6 @@ public class Library {
         private int overlapSize = -1;
         private Map<Codon, Design> designs;
         private EnumBiMap<AminoAcid, Codon> codonsOfInterest;
-        private Map<Codon, Double> minFrequencies;
         private List<BaseSequence> restrictions;
 
         public Builder withSequenceLength(int start, int end) {
@@ -662,15 +681,6 @@ public class Library {
             return this;
         }
 
-        public Builder withMinFrequencies(Map<Codon, Double> frequencies) {
-//            for (Map.Entry<Codon, Double> entry : frequencies.entrySet()) {
-//                checkArgument(codonsOfInterest.containsValue(entry.getKey()),
-//                        "Frequencies must be for codons of interest");
-//            }
-            this.minFrequencies = frequencies;
-            return this;
-        }
-
         public Builder withRestrictions(List<BaseSequence> restrictions) {
             this.restrictions = restrictions;
             return this;
@@ -682,15 +692,34 @@ public class Library {
             checkState(codonsOfInterest != null);
             checkState(oligoLength != -1);
             checkState(overlapSize != -1);
-            checkState(minFrequencies != null);
             Protein protein = (seqStart == Integer.MIN_VALUE)
                     ? new Protein(new Sequence(proteinRNA))
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
             int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
 
-            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest,
-                    minFrequencies, restrictions);
+            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest, restrictions);
         }
     }
 
+    public enum Phase {
+        INITIALIZING(0),
+        REMOVING_RESTRICTIONS(5),
+        CALC_FREQ(10),
+        SETTING_BASE_FREQ(15),
+        MAKING_OLIGOS(20),
+        FILLING_FRAGMENTS(25),
+        MAKING_OVERLAPS(30),
+        OVERLAPS_UNIQUE(50),
+        CANCELLED(0),
+        FINISHED(100);
+
+        private final int pct;
+
+        Phase(int pct) {
+            this.pct = pct;
+        }
+        public int pct() {
+            return pct;
+        }
+    }
 }

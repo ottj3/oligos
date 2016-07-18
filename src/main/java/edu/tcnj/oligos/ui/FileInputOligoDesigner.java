@@ -129,10 +129,11 @@ public class FileInputOligoDesigner {
                 .withSequenceLength(offset / 3, rnaEnd / 3)
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)
-                .withMinFrequencies(baseFrequencyMap)
                 .build();
 
         // run functions
+        lib.initBaseFrequencies(baseFrequencyMap);
+
         lib.createOligos();
         lib.fillFragments();
 
