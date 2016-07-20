@@ -488,8 +488,8 @@ public class Library {
     private boolean hasRestrictions() {
         return (restrictions != null && !restrictions.isEmpty()
                 && LibraryUtils.containsRestrictionEnzyme(
-                        LibraryUtils.buildPermutations(fullRange,
-                            oligos, oligoLength, overlapLength), restrictions));
+                LibraryUtils.buildPermutations(fullRange,
+                        oligos, oligoLength, overlapLength), restrictions));
     }
 
     private void doOverlapPermutation(Overlap overlap, Map<Integer, Integer> thisSwap) {
@@ -600,6 +600,42 @@ public class Library {
             }
         }
         return overlapToCodons;
+    }
+
+    /**
+     * Remove padding and replace any part of the original RNA left out.
+     * Assumes that the beginning part will not be so long as to go into the first overlap.
+     * @param start the start position in the RNA sequence given by the user
+     * @param offset the start of the first oligo relative to "start" given by the user
+     * @param RNA the original RNA sequence given by the user
+     */
+    public void removePadding(int start, int offset, String RNA) {
+        //Get the offset from the start of the Protein to the start of the RNA
+        //Negative means the protein has extra PADs before the RNA starts
+        //Positive means that the first codons in RNA are not included
+        int proteinStart = (start + offset) / 3;
+        //Remove any PAD codons that were not from the original RNA sequence
+        for (int i = proteinStart; i < 0; i++) {
+            for (Oligo oligo : oligos.get(0)) {
+                oligo.remove(0);
+            }
+        }
+        //Trim the RNA string if the first codons are not included
+        if (proteinStart > 0) RNA = RNA.substring(proteinStart * 3);
+
+        //Switch the PAD codons to the correct codon from the original RNA
+        for (int i = 0; i < (start / 3); i++) {
+            Codon codon = Codon.valueOf(RNA.substring(i * 3, (i + 1) * 3));
+            for (Oligo oligo : oligos.get(0)) {
+                oligo.set(i, codon);
+            }
+        }
+
+        //Trim the ending PAD codons
+        for (Oligo oligo : oligos.get(size - 1)) {
+            int endPos = oligo.size() - 1;
+            while (oligo.get(endPos) == Codon.PAD) oligo.remove(endPos--);
+        }
     }
 
     public Map<Integer, List<Oligo>> getOligos() {
@@ -725,6 +761,7 @@ public class Library {
         Phase(int pct) {
             this.pct = pct;
         }
+
         public int pct() {
             return pct;
         }

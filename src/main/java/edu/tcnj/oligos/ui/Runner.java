@@ -10,8 +10,6 @@ import edu.tcnj.oligos.ext.PythonHandler;
 import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Design;
 import edu.tcnj.oligos.library.Library;
-import edu.tcnj.oligos.library.Oligo;
-import edu.tcnj.oligos.library.OutOfSwapsException;
 import edu.tcnj.oligos.library.Protein;
 
 import java.util.List;
@@ -108,6 +106,7 @@ class Runner {
 
         lib.createOverlaps();
         lib.makeOverlapsUnique();
+        lib.removePadding(start, offset, seq);
         lib.setExecutionPhase(Library.Phase.FINISHED);
     }
 
