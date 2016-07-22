@@ -5,10 +5,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.TreeMap;
 
 public class SwapIterator {
     private Map<Integer, List<Integer>> potentialSwaps;
-    private Map<Integer, Integer> swapIndices;
+    private TreeMap<Integer, Integer> swapIndices;
     private int baseValue;
 
     /**
@@ -39,7 +40,7 @@ public class SwapIterator {
 
     private void initializeIndices() {
         //Set the indices to baseValue for every position
-        swapIndices = new HashMap<>();
+        swapIndices = new TreeMap<>();
         for (Map.Entry<Integer, List<Integer>> entry : potentialSwaps.entrySet()) {
             swapIndices.put(entry.getKey(), baseValue);
         }
@@ -75,10 +76,9 @@ public class SwapIterator {
         //Get the current element to return it
         Map<Integer, Integer> nextVal = this.peek();
         //Step to the next permutation
-        Iterator<Map.Entry<Integer, Integer>> it = swapIndices.entrySet().iterator();
-        Map.Entry<Integer, Integer> next = it.next();
-        int key = next.getKey();
-        int value = next.getValue();
+        Iterator<Integer> it = swapIndices.descendingKeySet().iterator();
+        int key = it.next();
+        int value = swapIndices.get(key);
         swapIndices.put(key, value + 1);
         //If the current index overflows, reset it to baseValue and try incrementing the next index instead
         //(Essentially counting with the least significant bits on the left)
@@ -86,9 +86,8 @@ public class SwapIterator {
         while (swapIndices.get(key) >= potentialSwaps.get(key).size()
                 && it.hasNext()) {
             swapIndices.put(key, baseValue);
-            next = it.next();
-            key = next.getKey();
-            value = next.getValue();
+            key = it.next();
+            value = swapIndices.get(key);
             swapIndices.put(key, value + 1);
         }
         return nextVal;
