@@ -11,12 +11,6 @@ import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.library.*;
-import edu.tcnj.oligos.library.BaseSequence;
-import edu.tcnj.oligos.library.Design;
-import edu.tcnj.oligos.library.Gene;
-import edu.tcnj.oligos.library.Library;
-import edu.tcnj.oligos.library.Oligo;
-import edu.tcnj.oligos.library.OutOfSwapsException;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -29,10 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
-import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
-public class OligoDesigner {
+public final class OligoDesigner {
     private ResourceBundle res = ResourceBundle.getBundle("edu.tcnj.oligos.ui.oligoDesigner");
     private static final Pattern rnaPattern = Pattern.compile("^[ACTG]*");
     private SwingWorker runnerThread = null;
@@ -71,6 +64,8 @@ public class OligoDesigner {
     private JButton cancelCalculateButton;
     private JProgressBar progressBar;
     private JLabel labelProgess;
+    private JCheckBox useOldDesignScriptCheckBox;
+    private JSpinner overlapDiffSpinner;
     private Runner currentRunner;
 
     public static void main(String[] args) {
@@ -91,15 +86,20 @@ public class OligoDesigner {
 
     private void setupTestData() {
         rnaInputField.setText("ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCGAGATACCCAGATCATATGAAACAGCATGACTTTTTCAAGAGTGCCATGCCTGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAA");
-        oligoLengthSpinner.setValue(90);
-        overlapSizeSpinner.setValue(18);
+        oligoLengthSpinner.setValue(117);
+        overlapSizeSpinner.setValue(30);
+        seqStartSpinner.setValue(36);
+        seqOffsetSpinner.setValue(-36);
+        overlapDiffSpinner.setValue(4);
+        restrictionSitesCheckBox.setSelected(true);
+        restrictionSitesText.setText("GGTACC,AGCGCT,CTTAAG,ACCGGT,GACNNNNNGTC,CAGNNNCTG,ATTAAT,ACCTGC,GCCNNNNNGGC,GCTAGC,GGTCTC,GATNNNNATC,GAATGC,CGTCTC,ATCGAT,ACCTGC,TGTACA,GCGCGC,TTCGAA,GGTNACC,ATCGAT,CACNNNGTG,GAATTC,GATATC,TGCGCA,GGGWCCC,GGTACC,TGGCCA,CCATGG,GCTAGC,GCCGAG,TCGCGA,ATGCAT,CTCGAG,ACATGT,GACNNNGTC,CCANNNNNTGG,TCCNGGA,RGGWCCY,TTATAA,VCTCGAGB,CGATCG,CCTGCAGG,AGTACT,CRCCGGYG,CCCGGG,GCATGC,CCWWGG");
         ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"ACT", 0.1, 0.85, 4});
         ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GAA", 0.1, 0.85, 6});
         ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GTT", 0.1, 0.85, 4});
-        rnaSequenceLengthLabel.setText(String.format(
-                res.getString("label.sequenceLength"),
-                rnaInputField.getText().length() / 3,
-                rnaInputField.getText().length()));
+        rnaSequenceLengthLabel.setText(
+                String.format(res.getString("label.sequenceLength"), rnaInputField.getText().length() / 3,
+                        rnaInputField.getText().length()));
+
     }
 
     private void createUIComponents() {
@@ -110,8 +110,8 @@ public class OligoDesigner {
                 JTextField field = ((JTextField) input);
                 String text = field.getText();
                 if (text.length() % 3 == 0 && rnaPattern.matcher(text).matches()) {
-                    rnaSequenceLengthLabel.setText(String.format(
-                            res.getString("label.sequenceLength"), text.length() / 3, text.length()));
+                    rnaSequenceLengthLabel.setText(
+                            String.format(res.getString("label.sequenceLength"), text.length() / 3, text.length()));
                     return true;
                 } else {
                     rnaSequenceLengthLabel.setText("Invalid input RNA!");
@@ -157,6 +157,21 @@ public class OligoDesigner {
         });
 
         // start, end, offset spinners
+        // TODO
+
+        overlapDiffSpinner.setModel(new SpinnerNumberModel());
+        ((JSpinner.DefaultEditor) overlapDiffSpinner.getEditor()).getTextField().setInputVerifier(new InputVerifier() {
+            @Override
+            public boolean verify(JComponent jComponent) {
+                int val = ((SpinnerNumberModel) overlapDiffSpinner.getModel()).getNumber().intValue();
+                if (val >= 1) {
+                    return true;
+                } else {
+                    overlapDiffSpinner.setValue(1);
+                    return false;
+                }
+            }
+        });
 
         // table
         final DefaultTableModel codonTableModel = ((DefaultTableModel) codonTable.getModel());
@@ -206,20 +221,6 @@ public class OligoDesigner {
         codonTable.getActionMap().put(im.get(tab), tabAction);
         codonTable.getActionMap().put(im.get(enter), tabAction);
 
-//        final InputVerifier verifier = new InputVerifier() {
-//            @Override
-//            public boolean verify(JComponent jComponent) {
-//                JTextField field = ((JTextField) jComponent);
-//                String text = field.getText();
-//                    // unfinished
-//            }
-//        };
-//        codonTable.getColumn("Min Freq").setCellEditor(new DefaultCellEditor(new JTextField()) {
-//            @Override
-//            public boolean stopCellEditing() {
-//                return verifier.verify(editorComponent) && super.stopCellEditing();
-//            }
-//        });
         addCodonButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
@@ -354,8 +355,8 @@ public class OligoDesigner {
                             Base b = Base.valueOf(String.valueOf(c));
                             restriction.add(b);
                         } catch (IllegalArgumentException e) {
-                            throw new IllegalArgumentException("Unrecognized or unsupported base " + c
-                                    + " in restriction sites.", e);
+                            throw new IllegalArgumentException(
+                                    "Unrecognized or unsupported base " + c + " in restriction sites.", e);
                         }
                     }
                     restrictions.add(new BaseSequence(restriction));
@@ -367,15 +368,12 @@ public class OligoDesigner {
             public void actionPerformed(ActionEvent actionEvent) {
                 calculateOligosButton.setEnabled(false);
                 calculateOligosButton.setVisible(false);
-                OligoDesigner.this.currentRunner = new Runner(rnaInputField.getText(),
-                        val(seqStartSpinner.getValue()),
-                        val(seqEndSpinner.getValue()),
-                        val(seqOffsetSpinner.getValue()),
-                        val(oligoLengthSpinner.getValue()),
-                        val(overlapSizeSpinner.getValue()),
-                        codons(), freqs(1), freqs(2), levels(),
-                        restrictionSites()
-                );
+                OligoDesigner.this.currentRunner = new Runner(
+                        (useOldDesignScriptCheckBox.isSelected() ? "design2.py" : "design.py"), rnaInputField.getText(),
+                        val(seqStartSpinner.getValue()), val(seqEndSpinner.getValue()),
+                        val(seqOffsetSpinner.getValue()), val(oligoLengthSpinner.getValue()),
+                        val(overlapSizeSpinner.getValue()), codons(), freqs(1), freqs(2), levels(), restrictionSites(),
+                        val(overlapDiffSpinner.getValue()));
                 final Runner runner = OligoDesigner.this.currentRunner;
                 final Runnable run = new Runnable() {
                     @Override
@@ -402,9 +400,11 @@ public class OligoDesigner {
                                 List<BaseSequence> restrictions = runner.getLastLib().getRestrictions();
                                 if (restrictions != null && !restrictions.isEmpty()) {
                                     outputInfoArea.append("\nRestriction Enzymes\n");
-                                    outputInfoArea.append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
+                                    outputInfoArea
+                                            .append(Joiner.on(",").join(runner.getLastLib().getRestrictions()) + "\n");
                                 }
-                                ((OligoListModel) outputOligoList.getModel()).setOligos(runner.getLastLib().getOligos());
+                                ((OligoListModel) outputOligoList.getModel())
+                                        .setOligos(runner.getLastLib().getOligos());
                                 ((GeneListModel) outputGeneList.getModel()).addGenes(runner.getLastLib());
                                 cancelCalculateButton.setVisible(false);
                                 cancelCalculateButton.setEnabled(false);
@@ -450,7 +450,11 @@ public class OligoDesigner {
     }
 
     private void updateGeneListInfoBox(int index) {
-        if (index == -1 || index >= outputGeneList.getModel().getSize()) return;
+        if (index == -1) return;
+        if (index >= outputGeneList.getModel().getSize()) {
+            outputGeneInfo.setText("");
+            return;
+        }
         Gene gene = ((GeneListModel) outputGeneList.getModel()).getActualAt(index);
         outputGeneInfo.setText("Sequence: ");
         outputGeneInfo.append(gene.toString() + "\n\n");
@@ -467,13 +471,16 @@ public class OligoDesigner {
     }
 
     private void updateOligoListInfoBox(int index) {
-        if (index == -1 || index >= outputOligoList.getModel().getSize()) return;
+        if (index == -1) return;
+        if (index >= outputOligoList.getModel().getSize()) {
+            outputOligoInfo.setText("");
+            return;
+        }
         Oligo oligo = ((OligoListModel) outputOligoList.getModel()).getActualAt(index);
         outputOligoInfo.setText("Sequence: ");
         outputOligoInfo.append(oligo.toString() + "\n\n");
         outputOligoInfo.append(String.format(res.getString("info.oligo.position"),
-                Integer.valueOf(((String) outputOligoList.getModel().getElementAt(index)).split(" ")[0]))
-                + "\n\n");
+                Integer.valueOf(((String) outputOligoList.getModel().getElementAt(index)).split(" ")[0])) + "\n\n");
         String deltas = "Codon -> Delta\n";
         for (Map.Entry<Codon, Integer> entry : oligo.getDeltas().entrySet()) {
             deltas += entry.getKey() + " (" + entry.getKey().getAminoAcid() + ") -> " + entry.getValue() + "\n";
@@ -482,18 +489,20 @@ public class OligoDesigner {
     }
 
     private void handleException(Exception ex) {
-        if (ex instanceof RuntimeException) {
-            if (ex.getCause() instanceof InterruptedException) {
-                outputInfoArea.setText(res.getString("exception.interrupt"));
-                if (this.currentRunner != null && this.currentRunner.getLastLib() != null) {
-                    this.currentRunner.getLastLib().setExecutionPhase(Library.Phase.CANCELLED);
-                }
-            } else if (ex.getCause() instanceof OutOfSwapsException) {
-                outputInfoArea.setText(res.getString("exception.noSwaps").replaceAll("\\\\n", "\n"));
+        outputInfoArea.setText("");
+        if (ex.getCause() instanceof InterruptedException) {
+            outputInfoArea.setText(res.getString("exception.interrupt"));
+            if (this.currentRunner != null && this.currentRunner.getLastLib() != null) {
+                this.currentRunner.getLastLib().setExecutionPhase(Library.Phase.CANCELLED);
             }
+        } else if (ex.getCause() instanceof OutOfSwapsException) {
+            outputInfoArea.setText(res.getString("exception.noSwaps").replaceAll("\\\\n", "\n"));
         } else {
-            outputInfoArea.setText(res.getString("exception.generic")
-                    + (ex.getMessage() == null ? "." : ":\n" + ex.getMessage()));
+            outputInfoArea.setText(
+                    res.getString("exception.generic") + (ex.getMessage() == null ? "." : ":\n" + ex.getMessage()));
+            if (this.currentRunner != null && this.currentRunner.getLastLib() != null) {
+                this.currentRunner.getLastLib().setExecutionPhase(Library.Phase.ERRORED);
+            }
         }
         outputInfoArea.append("\nSee console for details.");
         ex.printStackTrace();
@@ -503,7 +512,6 @@ public class OligoDesigner {
         calculateOligosButton.setVisible(true);
         calculateOligosButton.setEnabled(true);
     }
-
 
     {
 // GUI initializer generated by IntelliJ IDEA GUI Designer

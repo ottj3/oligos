@@ -17,11 +17,13 @@ import java.util.Map;
 
 class Runner {
     private String seq;
+    private String scriptName;
     private int start;
     private int end;
     private int offset;
     private int oligoSize;
     private int overlapSize;
+    private int minOverlapDiffs;
     private List<String> codons;
     private List<Double> mins;
     private List<Double> maxs;
@@ -29,9 +31,9 @@ class Runner {
     private List<BaseSequence> restrictions;
     private Library lastLib;
 
-    Runner(String seq, int start, int end, int offset, int oligoSize, int overlapSize,
+    Runner(String scriptName, String seq, int start, int end, int offset, int oligoSize, int overlapSize,
            List<String> codons, List<Double> mins, List<Double> maxs, List<Integer> numLevels,
-           List<BaseSequence> restrictions) {
+           List<BaseSequence> restrictions, int minOverlapDiffs) {
         this.seq = seq;
         this.start = start;
         this.end = end == 0 ? seq.length() : end;
@@ -43,6 +45,8 @@ class Runner {
         this.maxs = maxs;
         this.numLevels = numLevels;
         this.restrictions = restrictions;
+        this.scriptName = scriptName;
+        this.minOverlapDiffs = minOverlapDiffs;
     }
 
     void run() {
@@ -58,7 +62,7 @@ class Runner {
             aoi += Codon.valueOf(s).getAminoAcid().getCh();
         }
 
-        PythonHandler pyth = new PythonHandler(proteinString, aoi, oligoSize / 3, overlapSize / 3,
+        PythonHandler pyth = new PythonHandler(scriptName, proteinString, aoi, oligoSize / 3, overlapSize / 3,
                 Doubles.toArray(mins), Doubles.toArray(maxs), Ints.toArray(numLevels));
         Map<AminoAcid, Design> designMap = pyth.run();
 
@@ -87,11 +91,10 @@ class Runner {
         int smalligo = oligoSize - overlapSize;
         int offsetToEndOfLastSmalligo = (((end - (start + offset)) - overlapSize));
         int rnaEnd = (oligoSize - (offsetToEndOfLastSmalligo % smalligo)) + offsetToEndOfLastSmalligo + offset;
-        int differencesNeeded = 1;
         Library lib = builder
                 .withProteinFromRNA(trimmedRNA)
                 .withOligoSize(oligoSize / 3, overlapSize / 3)
-                .withDifferencesNeeded(differencesNeeded)
+                .withDifferencesNeeded(minOverlapDiffs)
                 .withSequenceLength(offset / 3, rnaEnd / 3)
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)

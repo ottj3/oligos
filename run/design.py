@@ -37,7 +37,7 @@ class Acid:
         if total_required == 0:
             total_required = 1
         delta = total_available * (maxval - minval) / (numpts - 1.0)
-        points_required = [x * delta for x in self.designtype]
+        points_required = [nDeltas * delta for nDeltas in self.designtype]
         required_acids = [np.floor(x) for x in points_required]
         while sum(required_acids) < total_required:
             differences = [x - y for x, y in zip(points_required, required_acids)]
@@ -83,7 +83,7 @@ def acidDesign_to_segmentDesign(acid_design, seqlength, segsize, overlapsize):
     numsegs = int(np.ceil((float(seqlength) - overlapsize) / (segsize - overlapsize)))
     segment_intervals = []
     segment_score = np.ones(numsegs)
-    for x, y in acid_design.intervals:
+    for x, y in acid_design.intervals: #L is index of leftmost segment in design, R is index of rightmost segment
         if x <= segsize - 1:
             L = 0
         else:
@@ -166,45 +166,3 @@ def compute_best_design(p, aoi, segsize, overlapsize, mins, maxs, numpts):
 
 if __name__ == '__main__':
     print 'Initializing design.py script.'
-"""
-    P = 'MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFGYGVQCFARYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK'
-    AOI = "TEV"
-    SEGSIZE = 30
-    OVERLAPSIZE = 6
-    MINS = [.1, .1, .1]
-    MAXS = [.85, .85, .85]
-    NUMPTS = [4, 4, 6]
-    minindex, minscore, scorearray, acidlist = compute_best_design(P, AOI, SEGSIZE, OVERLAPSIZE, MINS, MAXS, NUMPTS)
-"""
-
-"""
-        P = self.acid_lineedit.text()
-        AOI = ""
-        MINS = []
-        MAXS = []
-        NUMPTS = []
-        numacids = self.acid_table.rowCount()
-        for i in range(numacids):
-            AOI += self.acid_table.cellWidget(i,0).text()
-            MINS.append(float(self.acid_table.cellWidget(i,1).text()))
-            MAXS.append(float(self.acid_table.cellWidget(i,2).text()))
-            NUMPTS.append(int(self.acid_table.cellWidget(i,3).text()))
-        SEGSIZE = self.segment_spinbox.value()
-        OVERLAPSIZE = self.overlap_spinbox.value()
-        minindex, minscore, scorearray, acidlist = compute_best_design(P,AOI,SEGSIZE,OVERLAPSIZE,MINS,MAXS,NUMPTS)
-        design_space_size = 1
-        for i in range(numacids):
-            design_space_size *= NUMPTS[i]
-        self.results_display.append("Points in Design Space: %s" % design_space_size)
-        self.results_display.append("Total Segments Needed: %s" % minscore)
-        self.results_display.append("Average Coverage of Sequence: %s <br>" % (minscore/(self.compute_numsegs())))
-        self.results_display.append("<PRE><U>ACID</U>    <U>SEGMENTS USED FOR INTERVAL</U>     <U>OCCURENCES IN INTERVAL</U></PRE>")
-        if type(minindex) == int:
-            self.results_display.append("<PRE>%s:     %s        %s</PRE>" % (AOI[0], acidlist[0].designlist[minindex].intervals,
-                                                                         acidlist[0].required_acids))
-        else:
-            for i in range(len(minindex)):
-                self.results_display.append("<PRE>%s:     %s        %s</PRE>" %(AOI[i], acidlist[i].designlist[minindex[i]].intervals,
-                                                                      acidlist[i].required_acids))
-        self.results_display.append("<br>Number of Copies for Each Segment: %s" % scorearray)
-"""

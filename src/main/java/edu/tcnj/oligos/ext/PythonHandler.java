@@ -16,6 +16,7 @@ import java.util.*;
  */
 public class PythonHandler {
 
+    private final String scriptName;
     private final String protein;
     private final String acidsOfInterest;
     private final int oligoLength;
@@ -24,8 +25,9 @@ public class PythonHandler {
     private final double[] maxPercentages;
     private final int[] numFreqLevels;
 
-    public PythonHandler(String protein, String acidsOfInterest, int oligoLength, int overlapLength,
+    public PythonHandler(String scriptName, String protein, String acidsOfInterest, int oligoLength, int overlapLength,
                          double[] minPercentages, double[] maxPercentages, int[] numFreqLevels) {
+        this.scriptName = scriptName;
         this.protein = protein;
         this.acidsOfInterest = acidsOfInterest;
         this.oligoLength = oligoLength;
@@ -86,7 +88,7 @@ public class PythonHandler {
     private Object runScript(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) {
         try {
             Jep jep = new Jep(false);
-            jep.runScript("design2.py");
+            jep.runScript(scriptName);
             Object res = jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
             // jep.close(); pending bugs in jep
             return res;

@@ -94,7 +94,7 @@ public class FileInputOligoDesigner {
             aoi += Codon.valueOf(s).getAminoAcid().getCh();
         }
 
-        PythonHandler pyth = new PythonHandler(proteinString, aoi, oligoSize / 3, overlapSize / 3,
+        PythonHandler pyth = new PythonHandler("design.py", proteinString, aoi, oligoSize / 3, overlapSize / 3,
                 Doubles.toArray(mins), Doubles.toArray(maxs), Ints.toArray(numLevels));
         Map<AminoAcid, Design> designMap = pyth.run();
 

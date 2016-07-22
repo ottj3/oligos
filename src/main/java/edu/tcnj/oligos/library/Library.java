@@ -766,6 +766,7 @@ public class Library {
         MAKING_OVERLAPS(30),
         OVERLAPS_UNIQUE(35),
         CANCELLED(0),
+        ERRORED(0),
         FINISHED(100);
 
         private final int pct;
