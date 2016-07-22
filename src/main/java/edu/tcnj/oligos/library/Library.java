@@ -35,6 +35,7 @@ public class Library {
     private final int oligoLength; // size of an oligo
     private final int overlapLength; // size of an overlap
     private final int smalligo; // oligoLength - overlapLength; value needed in many calculations
+    private final int differencesNeeded;
     private final Fragment.Range fullRange;
 
     private Map<Codon, Design> designs;
@@ -48,12 +49,14 @@ public class Library {
     private int percentComplete = 0;
     private int overlapsPercent = 0;
 
-    private Library(Protein protein, int size, int oligoLength, int overlapLength, Map<Codon, Design> designs,
-                    EnumBiMap<AminoAcid, Codon> codonsOfInterest, List<BaseSequence> restrictions) {
+    private Library(Protein protein, int size, int oligoLength, int overlapLength, int differencesNeeded,
+                    Map<Codon, Design> designs, EnumBiMap<AminoAcid, Codon> codonsOfInterest,
+                    List<BaseSequence> restrictions) {
         this.protein = protein;
         this.size = size;
         this.oligoLength = oligoLength;
         this.overlapLength = overlapLength;
+        this.differencesNeeded = differencesNeeded;
         this.smalligo = oligoLength - overlapLength;
         this.designs = designs;
         this.codonsOfInterest = codonsOfInterest;
@@ -512,7 +515,7 @@ public class Library {
     private boolean matchesAnyVisited(Overlap overlap, List<Overlap> visited) {
         //Make sure that this overlap is unique to all the others made so far
         for (Overlap prev : visited) {
-            if (Sequence.regionsMatch(overlap, prev)) {
+            if (BaseSequence.numDifferences(overlap.asBases(), prev.asBases()) < differencesNeeded) {
                 return true;
             }
         }
@@ -605,9 +608,10 @@ public class Library {
     /**
      * Remove padding and replace any part of the original RNA left out.
      * Assumes that the beginning part will not be so long as to go into the first overlap.
-     * @param start the start position in the RNA sequence given by the user
+     *
+     * @param start  the start position in the RNA sequence given by the user
      * @param offset the start of the first oligo relative to "start" given by the user
-     * @param RNA the original RNA sequence given by the user
+     * @param RNA    the original RNA sequence given by the user
      */
     public void removePadding(int start, int offset, String RNA) {
         //Get the offset from the start of the Protein to the start of the RNA
@@ -685,6 +689,7 @@ public class Library {
         private int seqEnd;
         private int oligoLength = -1;
         private int overlapSize = -1;
+        private int differencesNeeded = 1;
         private Map<Codon, Design> designs;
         private EnumBiMap<AminoAcid, Codon> codonsOfInterest;
         private List<BaseSequence> restrictions;
@@ -709,6 +714,12 @@ public class Library {
             checkArgument(overlap > 0 && overlap < length, "Invalid overlap size %s", overlap);
             this.oligoLength = length;
             this.overlapSize = overlap;
+            return this;
+        }
+
+        public Builder withDifferencesNeeded(int differencesNeeded) {
+            checkArgument(differencesNeeded > 0, "Invalid differences needed: %s", differencesNeeded);
+            this.differencesNeeded = differencesNeeded;
             return this;
         }
 
@@ -740,7 +751,8 @@ public class Library {
                     : new Protein(new Sequence(proteinRNA), seqStart, seqEnd);
             int size = ((seqEnd - seqStart) - overlapSize) / (oligoLength - overlapSize);
 
-            return new Library(protein, size, oligoLength, overlapSize, designs, codonsOfInterest, restrictions);
+            return new Library(protein, size, oligoLength, overlapSize, differencesNeeded,
+                    designs, codonsOfInterest, restrictions);
         }
     }
 

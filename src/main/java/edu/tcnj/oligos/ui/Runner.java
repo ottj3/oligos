@@ -87,9 +87,11 @@ class Runner {
         int smalligo = oligoSize - overlapSize;
         int offsetToEndOfLastSmalligo = (((end - (start + offset)) - overlapSize));
         int rnaEnd = (oligoSize - (offsetToEndOfLastSmalligo % smalligo)) + offsetToEndOfLastSmalligo + offset;
+        int differencesNeeded = 1;
         Library lib = builder
                 .withProteinFromRNA(trimmedRNA)
                 .withOligoSize(oligoSize / 3, overlapSize / 3)
+                .withDifferencesNeeded(differencesNeeded)
                 .withSequenceLength(offset / 3, rnaEnd / 3)
                 .withCodonsOfInterest(codonsOfInterest)
                 .withDesigns(codonDesignMap)

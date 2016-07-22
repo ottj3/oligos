@@ -66,4 +66,25 @@ public class BaseSequence extends AbstractList<Base> {
     public String toString() {
         return Joiner.on("").join(sequence);
     }
+
+    public static int numDifferences(BaseSequence seq1, BaseSequence seq2) {
+        return numDifferences(seq1, 0, seq1.size(), seq2, 0, seq2.size());
+    }
+    public static int numDifferences(BaseSequence seq1, int start1, int end1, BaseSequence seq2, int start2, int end2) {
+        int numDifferences;
+        int length;
+        if (end1 - start1 > end2 - start2) {
+            length = end2 - start2;
+            numDifferences = (end1 - start1) - length;
+        } else {
+            length = end1 - start1;
+            numDifferences = (end2 - start2) - length;
+        }
+        for (int i = 0; i < length; i++) {
+            if (seq1.get(start1 + i) != seq2.get(start2 + i)) {
+                numDifferences++;
+            }
+        }
+        return numDifferences;
+    }
 }

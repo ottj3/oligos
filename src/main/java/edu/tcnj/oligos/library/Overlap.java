@@ -56,7 +56,7 @@ public class Overlap extends Oligo {
     //Set the codon in all oligos that connect to this overlap (to keep the overlap regions matching)
     @Override
     public Codon set(int index, Codon codon) {
-        Codon prev = sequence.set(index, codon);
+        Codon prev = super.set(index, codon);
         for (Oligo oligo : preAttachments) {
             Codon prevO = oligo.set(oligo.size() - this.size() + index, codon);
             checkState(prevO == prev);
