@@ -5,15 +5,11 @@ import com.google.common.collect.Lists;
 import edu.tcnj.oligos.data.Codon;
 import edu.tcnj.oligos.library.Oligo;
 
-import javax.swing.*;
 import java.util.List;
 import java.util.Map;
 
 class OligoListModel extends SequenceListModel {
     private Map<Integer, List<Oligo>> oligos;
-
-    OligoListModel() {
-    }
 
     void setOligos(Map<Integer, List<Oligo>> oligos) {
         super.removeAllElements();

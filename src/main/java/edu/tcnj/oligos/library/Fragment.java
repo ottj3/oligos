@@ -98,8 +98,8 @@ public class Fragment extends Sequence {
             //Permute the positions and fill them; if this happened to
             //make any restriction enzyme sites try a different permutation
             if (!perm.hasNext()) {
-                throw new RuntimeException(new OutOfSwapsException("Ran out of permutations when filling fragment: "
-                        + this.toString()));
+                throw new RuntimeException(new OutOfSwapsException(
+                        "Ran out of permutations when filling fragment: " + this));
             }
             positionsOfInterest = perm.next();
             for (int i = 0; i < delta; i++) {
@@ -119,7 +119,7 @@ public class Fragment extends Sequence {
 
     @Override
     public String toString() {
-        return codon.toString() + " (" + range.getStartPosition() + ","
+        return codon + " (" + range.getStartPosition() + ","
                 + range.getEndPosition() + ") -> " + delta;// + "\n" + super.toString();
     }
 
