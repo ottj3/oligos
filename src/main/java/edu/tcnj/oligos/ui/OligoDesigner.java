@@ -19,6 +19,10 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,7 @@ public final class OligoDesigner {
     private ResourceBundle res = ResourceBundle.getBundle("edu.tcnj.oligos.ui.oligoDesigner");
     private static final Pattern rnaPattern = Pattern.compile("^[ACTG]*");
     private SwingWorker runnerThread = null;
+    private JFrame frame;
 
     private JTextField rnaInputField;
     private JSpinner oligoLengthSpinner;
@@ -66,18 +71,22 @@ public final class OligoDesigner {
     private JLabel labelProgess;
     private JCheckBox useOldDesignScriptCheckBox;
     private JSpinner overlapDiffSpinner;
+    private JButton exportOligosButton;
+    private JButton exportGenesButton;
     private Runner currentRunner;
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Oligo Designer");
-        frame.setContentPane(new OligoDesigner().mainPanel);
+        OligoDesigner inst = new OligoDesigner(frame);
+        frame.setContentPane(inst.mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
         frame.setSize(1200, 600);
         frame.setVisible(true);
     }
 
-    private OligoDesigner() {
+    private OligoDesigner(JFrame parent) {
+        this.frame = parent;
         createUIComponents();
         if ("true".equals(System.getProperty("oligoDesigner.fillInTestData"))) {
             setupTestData();
@@ -98,7 +107,7 @@ public final class OligoDesigner {
 
         // using pGLO version
         rnaInputField.setText("ATGGCTAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCTACATACGGAAAGCTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCTCTTATGGTGTTCAATGCTTTTCCCGTTATCCGGATCATATGAAACGGCATGACTTTTTCAAGAGTGCCATGCCCGAAGGTTATGTACAGGAACGCACTATATCTTTCAAAGATGACGGGAACTACAAGACGCGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATCGTATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTCGGACACAAACTCGAGTACAACTATAACTCACACAATGTATACATCACGGCAGACAAACAAAAGAATGGAATCAAAGCTAACTTCAAAATTCGCCACAACATTGAAGATGGATCCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCGACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGCGTGACCACATGGTCCTTCTTGAGTTTGTAACTGCTGCTGGGATTACACATGGCATGGATGAGCTCTACAAATAA");
-        oligoLengthSpinner.setValue(114);
+        oligoLengthSpinner.setValue(270);
         overlapSizeSpinner.setValue(30);
         seqStartSpinner.setValue(36);
         seqOffsetSpinner.setValue(-36);
@@ -112,9 +121,11 @@ public final class OligoDesigner {
         // GCTAGC,TGTACA,TTCGAA,TGGCCA,CCATGG,GCTAGC,CTCGAG,VCTCGAGB,CCWWGG,CTCGAG,CTCGAG,
 
         restrictionSitesText.setText("GCTAGC,TGTACA,TTCGAA,TGGCCA,CCATGG,GCTAGC,CTCGAG,VCTCGAGB,CCWWGG,CTCGAG,CTCGAG,");
+//        restrictionSitesText.setText("GGTACC,AGCGCT,CTTAAG,ACCGGT,GACNNNNNGTC,CAGNNNCTG,ATTAAT,ACCTGC,GCCNNNNNGGC,GCTAGC,GGTCTC,GATNNNNATC,GAATGC,CGTCTC,ATCGAT,ACCTGC,TGTACA,GCGCGC,TTCGAA,GGTNACC,ATCGAT,CACNNNGTG,GAATTC,GATATC,TGCGCA,GGGWCCC,GGTACC,TGGCCA,CCATGG,GCTAGC,GCCGAG,TCGCGA,ATGCAT,CTCGAG,ACATGT,GACNNNGTC,CCANNNNNTGG,TCCNGGA,RGGWCCY,TTATAA,VCTCGAGB,CGATCG,CCTGCAGG,AGTACT,CRCCGGYG,CCCGGG,GCATGC,CCWWGG,CTCGAG,CCCGGG,GACNNNGTC,TCTAGA,CTCGAG,CCCGGG,");
+
         restrictionSitesText.append(",AGGAGG"); // E.Coli Shine-Dalgarno sequence
-        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"CTA", 0.0, 0.75, 4}); // Leu
-        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"TCG", 0.0, 0.75, 4}); // Ser
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"CTA", 0.105, 0.50, 3}); // Leu
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"TCG", 0.16, 0.80, 3}); // Ser
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"ACT", 0.1, 0.85, 4});
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GAA", 0.1, 0.85, 6});
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GTT", 0.1, 0.85, 4});
@@ -449,6 +460,22 @@ public final class OligoDesigner {
         });
 
         progressBar.setModel(new DefaultBoundedRangeModel(0, 0, 0, 100));
+
+
+        exportOligosButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                writeListToFile(outputOligoList, res.getString("button.export.oligos"));
+            }
+        });
+
+        exportGenesButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                writeListToFile(outputGeneList, res.getString("button.export.genes"));
+            }
+        });
+
         Timer progressUpdate = new Timer(100, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
@@ -467,6 +494,30 @@ public final class OligoDesigner {
             }
         });
         progressUpdate.start();
+    }
+
+    private void writeListToFile(JList list, String dialogName) {
+        FileDialog fileDialog = new FileDialog(frame, dialogName, FileDialog.SAVE);
+        fileDialog.setVisible(true);
+        String fileName = fileDialog.getFile();
+        if (Strings.isNullOrEmpty(fileName)) return;
+        File outputFile = new File(fileName);
+        StringBuilder content = new StringBuilder();
+        SequenceListModel listModel = ((SequenceListModel) list.getModel());
+        for (int i = 0; i < listModel.getSize(); i++) {
+            content.append("> ").append(listModel.get(i).replaceAll(":", ""))
+                    .append("\n").append(listModel.getActualAt(i))
+                    .append("\n");
+        }
+
+        try {
+            FileWriter fw = new FileWriter(outputFile);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(content.toString());
+            bw.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     private void updateGeneListInfoBox(int index) {
@@ -726,30 +777,39 @@ public final class OligoDesigner {
         panel14.setLayout(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1));
         panel9.add(panel14, new GridConstraints(1, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel15 = new JPanel();
-        panel15.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
-        panel14.add(panel15, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        labelProgess = new JLabel();
-        this.$$$loadLabelText$$$(labelProgess, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("label.progress.phase0"));
-        panel15.add(labelProgess, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel15.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
+        panel14.add(panel15, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel16 = new JPanel();
-        panel16.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1, true, false));
-        panel14.add(panel16, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JPanel panel17 = new JPanel();
-        panel17.setLayout(new GridLayoutManager(1, 2, new Insets(0, 5, 5, 0), -1, -1));
-        panel16.add(panel17, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel16.setLayout(new GridLayoutManager(1, 2, new Insets(0, 5, 5, 0), -1, -1));
+        panel15.add(panel16, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         cancelCalculateButton = new JButton();
         cancelCalculateButton.setEnabled(false);
         this.$$$loadButtonText$$$(cancelCalculateButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.cancelCalc"));
         cancelCalculateButton.setVisible(false);
-        panel17.add(cancelCalculateButton, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel16.add(cancelCalculateButton, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         calculateOligosButton = new JButton();
         this.$$$loadButtonText$$$(calculateOligosButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.calculate"));
-        panel17.add(calculateOligosButton, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel16.add(calculateOligosButton, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JPanel panel17 = new JPanel();
+        panel17.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
+        panel15.add(panel17, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        progressBar = new JProgressBar();
+        panel17.add(progressBar, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel18 = new JPanel();
         panel18.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
-        panel16.add(panel18, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
-        progressBar = new JProgressBar();
-        panel18.add(progressBar, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel14.add(panel18, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        labelProgess = new JLabel();
+        this.$$$loadLabelText$$$(labelProgess, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("label.progress.phase0"));
+        panel18.add(labelProgess, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JPanel panel19 = new JPanel();
+        panel19.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
+        panel14.add(panel19, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        exportOligosButton = new JButton();
+        this.$$$loadButtonText$$$(exportOligosButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.export.oligos"));
+        panel19.add(exportOligosButton, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        exportGenesButton = new JButton();
+        this.$$$loadButtonText$$$(exportGenesButton, ResourceBundle.getBundle("edu/tcnj/oligos/ui/oligoDesigner").getString("button.export.genes"));
+        panel19.add(exportGenesButton, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
@@ -809,7 +869,5 @@ public final class OligoDesigner {
     /**
      * @noinspection ALL
      */
-    public JComponent $$$getRootComponent$$$() {
-        return mainPanel;
-    }
+    public JComponent $$$getRootComponent$$$() { return mainPanel; }
 }
