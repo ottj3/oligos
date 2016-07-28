@@ -116,7 +116,7 @@ public class Sequence extends AbstractList<Codon> {
                 Codon codon = sequence.get(i);
                 System.arraycopy(codon.toBases(), 0, bases, i * 3, 3);
             }
-            this.bases = new BaseSequence(Arrays.asList(bases));
+            this.bases = new BaseSequence(new ArrayList<>(Arrays.asList(bases)));
         }
         return this.bases;
     }

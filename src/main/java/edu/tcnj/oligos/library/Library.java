@@ -480,6 +480,7 @@ public class Library {
                 if (matches || hasRestrictions()) {
                     //Undo the swap if it is not unique or if it made a restriction site
                     doOverlapPermutation(overlap, thisSwap);
+                    matches = true;
                 }
             }
 
