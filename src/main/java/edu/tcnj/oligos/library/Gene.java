@@ -3,16 +3,19 @@ package edu.tcnj.oligos.library;
 import com.google.common.collect.Maps;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Codon;
+import edu.tcnj.oligos.ext.PerlHandler;
 
 import java.util.Collections;
 import java.util.Map;
 
 public class Gene extends Sequence {
     private Map<AminoAcid, Map<Codon, Double>> freqs;
+    private Double codonPairScore;
 
-    public Gene(Sequence codons, Map<AminoAcid, Map<Codon, Double>> freqs) {
+    public Gene(Sequence codons, Map<AminoAcid, Map<Codon, Double>> freqs, Double cps) {
         super(codons);
         this.freqs = Collections.unmodifiableMap(freqs);
+        this.codonPairScore = cps;
     }
 
     public Map<AminoAcid, Map<Codon, Double>> getFreqs() {
@@ -51,6 +54,11 @@ public class Gene extends Sequence {
                 freqs.get(entry.getKey()).put(entry.getValue(), 0.0D);
             }
         }
-        return new Gene(gene, freqs);
+        Double cps = PerlHandler.getCodonPairScore(gene.toString());
+        return new Gene(gene, freqs, cps);
+    }
+
+    public Double getCPS() {
+        return codonPairScore;
     }
 }

@@ -2,6 +2,7 @@ package edu.tcnj.oligos.ui;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -124,8 +125,8 @@ public final class OligoDesigner {
 //        restrictionSitesText.setText("GGTACC,AGCGCT,CTTAAG,ACCGGT,GACNNNNNGTC,CAGNNNCTG,ATTAAT,ACCTGC,GCCNNNNNGGC,GCTAGC,GGTCTC,GATNNNNATC,GAATGC,CGTCTC,ATCGAT,ACCTGC,TGTACA,GCGCGC,TTCGAA,GGTNACC,ATCGAT,CACNNNGTG,GAATTC,GATATC,TGCGCA,GGGWCCC,GGTACC,TGGCCA,CCATGG,GCTAGC,GCCGAG,TCGCGA,ATGCAT,CTCGAG,ACATGT,GACNNNGTC,CCANNNNNTGG,TCCNGGA,RGGWCCY,TTATAA,VCTCGAGB,CGATCG,CCTGCAGG,AGTACT,CRCCGGYG,CCCGGG,GCATGC,CCWWGG,CTCGAG,CCCGGG,GACNNNGTC,TCTAGA,CTCGAG,CCCGGG,");
 
         restrictionSitesText.append(",AGGAGG"); // E.Coli Shine-Dalgarno sequence
-        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"CTA", 0.105, 0.50, 3}); // Leu
-        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"TCG", 0.16, 0.80, 3}); // Ser
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"CTA", 0.105, 0.80, 4}); // Leu
+        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"TCG", 0.16, 0.95, 3}); // Ser
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"ACT", 0.1, 0.85, 4});
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GAA", 0.1, 0.85, 6});
 //        ((DefaultTableModel) codonTable.getModel()).addRow(new Object[]{"GTT", 0.1, 0.85, 4});
@@ -505,9 +506,13 @@ public final class OligoDesigner {
         StringBuilder content = new StringBuilder();
         SequenceListModel listModel = ((SequenceListModel) list.getModel());
         for (int i = 0; i < listModel.getSize(); i++) {
-            content.append("> ").append(listModel.get(i).replaceAll(":", ""))
-                    .append("\n").append(listModel.getActualAt(i))
-                    .append("\n");
+            String listString = listModel.get(i);
+            Sequence listSequence = listModel.getActualAt(i);
+            content.append("> ").append(listString.replaceAll(":", ""));
+            if (listSequence instanceof Gene) {
+                content.append(" " + ((Gene) listSequence).getCPS());
+            }
+            content.append("\n").append(listSequence).append("\n");
         }
 
         try {
@@ -530,15 +535,24 @@ public final class OligoDesigner {
         outputGeneInfo.setText("Sequence: ");
         outputGeneInfo.append(gene.toString() + "\n\n");
         String deltas = "Codon Frequencies\n\n";
+        String counts = "\nCodon Counts\n";
         for (Map.Entry<AminoAcid, Map<Codon, Double>> acidEntry : gene.getFreqs().entrySet()) {
             deltas += acidEntry.getKey().getName() + ":\n";
             List<String> codonInfo = Lists.newArrayList();
             for (Map.Entry<Codon, Double> codonEntry : acidEntry.getValue().entrySet()) {
                 codonInfo.add(codonEntry.getKey() + " -> " + ((int) (codonEntry.getValue() * 100 + 0.5)) + "%");
+                if (currentRunner.getLastLib().getCodonsOfInterest().containsValue(codonEntry.getKey())) {
+                    counts += codonEntry.getKey() + " = " + HashMultiset.create(gene).count(codonEntry.getKey()) + "\n";
+                }
             }
             deltas += Joiner.on(", ").join(codonInfo) + "\n";
         }
         outputGeneInfo.append(deltas);
+
+        outputGeneInfo.append(counts);
+
+        outputGeneInfo.append("\nCodon Pair Score:\n");
+        outputGeneInfo.append(gene.getCPS() == null ? "Unknown" : String.valueOf(gene.getCPS()));
     }
 
     private void updateOligoListInfoBox(int index) {
@@ -552,11 +566,21 @@ public final class OligoDesigner {
         outputOligoInfo.append(oligo.toString() + "\n\n");
         outputOligoInfo.append(String.format(res.getString("info.oligo.position"),
                 Integer.valueOf(((String) outputOligoList.getModel().getElementAt(index)).split(" ")[0])) + "\n\n");
-        String deltas = "Codon -> Delta\n";
+        String deltas = "Codon -> Delta (delta that this oligo belongs to)\n";
         for (Map.Entry<Codon, Integer> entry : oligo.getDeltas().entrySet()) {
             deltas += entry.getKey() + " (" + entry.getKey().getAminoAcid() + ") -> " + entry.getValue() + "\n";
         }
         outputOligoInfo.append(deltas);
+
+        String counts = "\nCodon -> Count (actual number in this oligo)\n";
+        for (Codon match : oligo.getDeltas().keySet()) {
+            int i = 0;
+            for (Codon codon : oligo) {
+                if (codon == match) i++;
+            }
+            counts += match + " = " + i + "\n";
+        }
+        outputOligoInfo.append(counts);
     }
 
     private void handleException(Exception ex) {
