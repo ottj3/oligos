@@ -9,9 +9,14 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import edu.tcnj.oligos.data.AminoAcid;
-import edu.tcnj.oligos.data.Base;
 import edu.tcnj.oligos.data.Codon;
-import edu.tcnj.oligos.library.*;
+import edu.tcnj.oligos.library.BaseSequence;
+import edu.tcnj.oligos.library.Design;
+import edu.tcnj.oligos.library.Gene;
+import edu.tcnj.oligos.library.Library;
+import edu.tcnj.oligos.library.Oligo;
+import edu.tcnj.oligos.library.OutOfSwapsException;
+import edu.tcnj.oligos.library.Sequence;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -19,7 +24,12 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -377,23 +387,7 @@ public final class OligoDesigner {
                     return null;
                 }
                 String[] sites = text.split(",");
-                List<BaseSequence> restrictions = Lists.newArrayList();
-                for (String site : sites) {
-                    site = site.trim().toUpperCase();
-                    if (site.isEmpty()) continue;
-                    List<Base> restriction = Lists.newArrayList();
-                    for (char c : site.toCharArray()) {
-                        try {
-                            Base b = Base.valueOf(String.valueOf(c));
-                            restriction.add(b);
-                        } catch (IllegalArgumentException e) {
-                            throw new IllegalArgumentException(
-                                    "Unrecognized or unsupported base " + c + " in restriction sites.", e);
-                        }
-                    }
-                    restrictions.add(new BaseSequence(restriction));
-                }
-                return restrictions;
+                return Util.getRestrictionSites(sites);
             }
 
             @Override

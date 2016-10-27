@@ -1,17 +1,10 @@
 package edu.tcnj.oligos.ui;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.google.common.collect.Maps;
-import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Ints;
-import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.data.Codon;
-import edu.tcnj.oligos.ext.PythonHandler;
-import edu.tcnj.oligos.library.Design;
+import edu.tcnj.oligos.library.BaseSequence;
 import edu.tcnj.oligos.library.Library;
 import edu.tcnj.oligos.library.Oligo;
-import edu.tcnj.oligos.library.Protein;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -33,10 +26,12 @@ public class FileInputOligoDesigner {
         int offset;
         int oligoSize;
         int overlapSize;
+        int minOverlapDiffs;
         List<String> codons = new ArrayList<>();
         List<Double> mins = new ArrayList<>();
         List<Double> maxs = new ArrayList<>();
         List<Integer> numLevels = new ArrayList<>();
+        List<BaseSequence> restrictions;
 
         String line;
         String[] split;
@@ -44,33 +39,36 @@ public class FileInputOligoDesigner {
         // read sequence
         seq = br.readLine();
 
-        // start and end
+        // start end offset
         line = br.readLine();
         if (!Strings.isNullOrEmpty(line)) {
             split = line.split(" ");
-            start = Integer.parseInt(split[0]) - 1;
+            start = Integer.parseInt(split[0]);
             end = Integer.parseInt(split[1]);
+            offset = Integer.parseInt(split[2]);
         } else {
             start = 0;
-            end = seq.length();
-        }
-
-        // offset
-        line = br.readLine();
-        if (!Strings.isNullOrEmpty(line)) {
-            offset = Integer.parseInt(line);
-        } else {
+            end = 0;
             offset = 0;
         }
 
-        // size and overlap
+        // size overlap minOverlapDiffs
         line = br.readLine();
         if (!Strings.isNullOrEmpty(line)) {
             split = line.split(" ");
             oligoSize = Integer.parseInt(split[0]);
             overlapSize = Integer.parseInt(split[1]);
+            minOverlapDiffs = Integer.parseInt(split[2]);
         } else {
             throw new IllegalArgumentException("Input had no oligo size or overlap length at expected line.");
+        }
+
+        // restriction sites
+        line = br.readLine();
+        if (!Strings.isNullOrEmpty(line)) {
+            restrictions = Util.getRestrictionSites(line.split(","));
+        } else {
+            restrictions = null;
         }
 
         // codons
@@ -83,62 +81,11 @@ public class FileInputOligoDesigner {
         }
         br.close();
 
-        String trimmedRNA = seq.substring(start, end);
-        Protein gene = new Protein(trimmedRNA);
-        String proteinString = Joiner.on("").join(gene.getAminoAcidSequence());
-        for (int i = offset/3; i < 0; i++) {
-            proteinString = "*" + proteinString;
-        }
-        String aoi = "";
-        for (String s : codons) {
-            aoi += Codon.valueOf(s).getAminoAcid().getCh();
-        }
+        Runner runner = new Runner("design.py", seq, start, end, offset, oligoSize, overlapSize, codons,
+                mins, maxs, numLevels, restrictions, minOverlapDiffs);
 
-        PythonHandler pyth = new PythonHandler("design.py", proteinString, aoi, oligoSize / 3, overlapSize / 3,
-                Doubles.toArray(mins), Doubles.toArray(maxs), Ints.toArray(numLevels));
-        Map<AminoAcid, Design> designMap = pyth.run();
-
-
-        // get amino acids from codons
-        Map<AminoAcid, Codon> codonsOfInterest = Maps.newEnumMap(AminoAcid.class);
-        for (String codonStr : codons) {
-            Codon codon = Codon.valueOf(codonStr);
-            AminoAcid acid = codon.getAminoAcid();
-            codonsOfInterest.put(acid, codon);
-        }
-        Map<Codon, Design> codonDesignMap = Maps.newEnumMap(Codon.class);
-        for (Map.Entry<AminoAcid, Design> entry : designMap.entrySet()) {
-            codonDesignMap.put(codonsOfInterest.get(entry.getKey()), entry.getValue());
-        }
-
-        Map<Codon, Double> baseFrequencyMap = Maps.newEnumMap(Codon.class);
-        for (int i = 0; i < codons.size(); i++) {
-            Codon codon = Codon.valueOf(codons.get(i));
-            double baseFreq = mins.get(i);
-            baseFrequencyMap.put(codon, baseFreq);
-        }
-
-        Library.Builder builder = new Library.Builder();
-        // calculate the number of extra characters we need to pad in order to get a full oligo at the last position
-        int smalligo = oligoSize - overlapSize;
-        int offsetToEndOfLastSmalligo = (((end - (start + offset)) - overlapSize));
-        int rnaEnd = (oligoSize - (offsetToEndOfLastSmalligo % smalligo)) + offsetToEndOfLastSmalligo + offset;
-        Library lib = builder
-                .withProteinFromRNA(trimmedRNA)
-                .withOligoSize(oligoSize / 3, overlapSize / 3)
-                .withSequenceLength(offset / 3, rnaEnd / 3)
-                .withCodonsOfInterest(codonsOfInterest)
-                .withDesigns(codonDesignMap)
-                .build();
-
-        // run functions
-        lib.initBaseFrequencies(baseFrequencyMap);
-
-        lib.createOligos();
-        lib.fillFragments();
-
-        lib.createOverlaps();
-        lib.makeOverlapsUnique();
+        runner.run();
+        Library lib = runner.getLastLib();
 
         // print output oligos
         StringBuilder sb = new StringBuilder();
