@@ -15,7 +15,7 @@ import edu.tcnj.oligos.library.Protein;
 import java.util.List;
 import java.util.Map;
 
-class Runner {
+public class Runner {
     private String seq;
     private String scriptName;
     private int start;
@@ -31,7 +31,7 @@ class Runner {
     private List<BaseSequence> restrictions;
     private Library lastLib;
 
-    Runner(String scriptName, String seq, int start, int end, int offset, int oligoSize, int overlapSize,
+    public Runner(String scriptName, String seq, int start, int end, int offset, int oligoSize, int overlapSize,
            List<String> codons, List<Double> mins, List<Double> maxs, List<Integer> numLevels,
            List<BaseSequence> restrictions, int minOverlapDiffs) {
         this.seq = seq;
@@ -49,7 +49,7 @@ class Runner {
         this.minOverlapDiffs = minOverlapDiffs;
     }
 
-    void run() {
+    public void run() {
         this.lastLib = null;
         String trimmedRNA = seq.substring(start, end);
         Protein gene = new Protein(trimmedRNA);
@@ -115,7 +115,7 @@ class Runner {
         lib.setExecutionPhase(Library.Phase.FINISHED);
     }
 
-    Library getLastLib() {
+    public Library getLastLib() {
         return lastLib;
     }
 }
