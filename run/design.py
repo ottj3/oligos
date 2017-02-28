@@ -6,6 +6,7 @@ Created on Wed Aug 24 11:36:17 2011
 """
 
 import numpy as np
+import sys
 
 class Acid:
     def __init__(self, name, p, segsize, overlapsize, minval, maxval, numpts):
@@ -165,4 +166,23 @@ def compute_best_design(p, aoi, segsize, overlapsize, mins, maxs, numpts):
     return results
 
 if __name__ == '__main__':
-    print 'Initializing design.py script.'
+    lines = [x.strip() for x in sys.stdin.readlines()]
+    p = lines[0]
+    aoi = lines[1]
+    segsize = int(lines[2])
+    overlapsize = int(lines[3])
+    mins = [ float(d) for d in lines[4].split() ]
+    maxs = [ float(d) for d in lines[5].split() ]
+    numpts = [ int(i) for i in lines[6].split() ]
+
+    res = compute_best_design(p, aoi, segsize, overlapsize, mins, maxs, numpts)
+
+    print len(res)
+    for cR in res:
+        print cR[0]
+        print len(cR[1])
+        for interval in cR[1]:
+            print interval[0]
+            print interval[1]
+        for x in range(len(cR[1])):
+            print cR[2][x]

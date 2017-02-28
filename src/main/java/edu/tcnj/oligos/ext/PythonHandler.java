@@ -1,15 +1,27 @@
 package edu.tcnj.oligos.ext;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 import edu.tcnj.oligos.data.AminoAcid;
 import edu.tcnj.oligos.library.Design;
 import edu.tcnj.oligos.library.Fragment;
-import jep.Jep;
-import jep.JepException;
 
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Use Ryan's python script to figure out the optimal library, and then builds that library
@@ -43,8 +55,13 @@ public class PythonHandler {
      */
     @SuppressWarnings("unchecked")
     public Map<AminoAcid, Design> run() {
-        Object res = runScript(protein, acidsOfInterest, oligoLength, overlapLength,
-                minPercentages, maxPercentages, numFreqLevels);
+        Object res;
+        try {
+            res = runScript(protein, acidsOfInterest, oligoLength, overlapLength,
+                    minPercentages, maxPercentages, numFreqLevels);
+        } catch (IOException e) {
+            throw new IllegalStateException("Couldn't run python design script.", e);
+        }
         if (!(res instanceof List)) {
             throw new IllegalStateException();
         }
@@ -85,17 +102,72 @@ public class PythonHandler {
         return designs;
     }
 
-    private Object runScript(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) {
+    private static Object runScript(String protein, String acids, int segmentLength, int overlapLength, double[] mins, double[] maxs, int[] numLevels) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder("python", "design.py");
+        pb.redirectErrorStream(true);
+        // set up process and stdin stream
+        Process proc = pb.start();
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream()));
+
+        // write all the args to stdin for python
+        bw.write(protein + "\n");
+        bw.write(acids + "\n"); //Joiner.on(" ").join(Chars.asList(acids.toCharArray())) + "\n");
+        bw.write(segmentLength + "\n");
+        bw.write(overlapLength + "\n");
+        bw.write(Joiner.on(" ").join(Doubles.asList(mins)) + "\n");
+        bw.write(Joiner.on(" ").join(Doubles.asList(maxs)) + "\n");
+        bw.write(Joiner.on(" ").join(Ints.asList(numLevels)) + "\n");
+        bw.close();
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+        String line;
+        List<String> rawOut = new ArrayList<>();
+        while ((line = br.readLine()) != null) {
+            rawOut.add(line);
+        }
         try {
-            Jep jep = new Jep(false);
-            jep.runScript(scriptName);
-            Object res = jep.invoke("compute_best_design", protein, acids, segmentLength, overlapLength, mins, maxs, numLevels);
-            // jep.close(); pending bugs in jep
-            return res;
-        } catch (JepException e) {
+            proc.waitFor();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return null;
+        br.close();
+
+        // parse design script output into all the lists
+        // this is all extremely fragile because sharing data between processes through stdin and stdout sucks
+        // make sure you have the right design.py or everything will break
+        int numOfCodons = Integer.valueOf(rawOut.get(0));
+        int lNum = 1;
+        List<Object> resList = new LinkedList<>();
+        for (int i = 0; i < numOfCodons; i++) {
+            List<Object> result = new LinkedList<>();
+            String codonCode = rawOut.get(lNum);
+            result.add(codonCode);
+            lNum++;
+            int numOfIntervals = Integer.valueOf(rawOut.get(lNum));
+            lNum++;
+            List<List<Integer>> ranges = new LinkedList<>();
+            for (int j = 0; j < numOfIntervals; j++) {
+                int start = Integer.valueOf(rawOut.get(lNum));
+                lNum++;
+                int end = Integer.valueOf(rawOut.get(lNum));
+                lNum++;
+                List<Integer> range = new LinkedList<>();
+                range.add(start);
+                range.add(end);
+                ranges.add(range);
+            }
+            result.add(ranges);
+            List<Integer> occurenceList = new LinkedList<>();
+            for (int j = 0; j < numOfIntervals; j++) {
+                int occurences = Integer.valueOf(rawOut.get(lNum));
+                occurenceList.add(occurences);
+                lNum++;
+            }
+            result.add(occurenceList);
+            resList.add(result);
+        }
+
+        return resList;
     }
 
     //Helper method used in calculateDesign;

@@ -16,7 +16,6 @@ repositories {
 dependencies {
     compile 'com.google.guava:guava:19.0'
     compile 'com.intellij:forms_rt:7.0.3'
-    compile files('libs/jep-3.5.3.jar')
     testCompile 'junit:junit:4.12'
 }
 
