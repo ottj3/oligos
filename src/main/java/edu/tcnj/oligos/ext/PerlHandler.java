@@ -21,24 +21,25 @@ public final class PerlHandler {
     public static Double getCodonPairScore(String gene) {
         if (!hasPerl) return null;
         File cpsScript = new File("cps.pl");
-        if (!cpsScript.exists() || !cpsScript.canExecute()) {
+        if (!cpsScript.exists()) {
             return null;
         }
-        File temp = new File("tmp.fa");
+        File temp = null;
         StringBuilder content = new StringBuilder();
         content.append(">\n").append(gene);
 
         try {
+            temp = File.createTempFile("cps_gene", "fa");
             FileWriter fw = new FileWriter(temp);
             BufferedWriter bw = new BufferedWriter(fw);
             bw.write(content.toString());
             bw.close();
         } catch (IOException ex) {
             ex.printStackTrace();
-            temp.delete();
+            if (temp != null) temp.delete();
             return null;
         }
-        ProcessBuilder pb = new ProcessBuilder("perl","cps.pl", "-p e.coli.k12.codon_pair_info.expected", "tmp.fa");
+        ProcessBuilder pb = new ProcessBuilder("perl","cps.pl", "-p e.coli.k12.codon_pair_info.expected", temp.getAbsolutePath());
         StringBuilder plOutSB = null;
         try {
             Process proc = pb.start();
